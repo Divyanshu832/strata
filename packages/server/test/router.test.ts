@@ -13,6 +13,9 @@ describe("routeQuery", () => {
     const r = routeQuery("When did I last talk to Harshit?", now);
     expect(r.type).toBe("temporal");
     expect(r.latest).toBe(true);
+    expect(routeQuery("When did Mira last go climbing?", now).latest).toBe(true);
+    expect(routeQuery("when was harshit here last?", now).latest).toBe(true);
+    expect(routeQuery("When did I go climbing last week?", now).latest).toBeUndefined();
   });
 
   it("detects 'what was true on a date'", () => {

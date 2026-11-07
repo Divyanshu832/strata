@@ -22,7 +22,11 @@ export function routeQuery(query: string, now: Date = new Date()): Route {
   if (/\bhow (many|often)\b|\bnumber of\b|\bcount\b|\bhow many times\b/.test(q)) {
     return { type: "count", range, reason: "count words (how many / how often)" };
   }
-  if (/\b(last|latest|most recent(ly)?)\b.*\b(time|did|was|when)\b|\bwhen did i last\b/.test(q)) {
+  // "when did <anyone> last ...", "the last time ...", but not "last week/month/year" (a date window).
+  if (
+    /\b(last|latest|most recent(ly)?)\b.*\b(time|did|was|when)\b/.test(q) ||
+    /\bwhen (did|was|were|have|has)\b.*\blast\b(?!\s+(week|month|year)\b)/.test(q)
+  ) {
     return { type: "temporal", latest: true, range, reason: "asks for the latest occurrence" };
   }
   const asOf = /\b(on|as of|at)\s+(\d{4}-\d{2}-\d{2})\b/.exec(q);
