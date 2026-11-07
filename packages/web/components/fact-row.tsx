@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { NoteFact } from "@stratamem/sdk";
 import { editFactStatement, endFact, forgetFact, pinFact } from "@/app/actions";
-import { day, predicateLabel, typeColor } from "@/lib/format";
+import { day, predicateLabel, typeColor, statementText } from "@/lib/format";
 
 /** One current fact on a note: "lives in [[Pune]] since 1 May 2026", with its actions. */
 export function FactRow({ fact }: { fact: NoteFact }) {
@@ -66,7 +66,7 @@ export function FactRow({ fact }: { fact: NoteFact }) {
               {fact.pinned && <span className="ml-2 text-[12px] text-ochre" title="Pinned: never merged or summarised away">pinned</span>}
             </p>
             <p className="mt-0.5 text-[12.5px] text-muted">
-              {fact.statement}
+              {statementText(fact.statement)}
               <span className="text-faint"> · since {day(fact.validFrom)}</span>
               {fact.sourceId && (
                 <>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StrataError } from "@stratamem/sdk";
 import { strata } from "@/lib/strata";
-import { day } from "@/lib/format";
+import { day, statementText } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Source" };
 
@@ -38,7 +38,7 @@ export default async function SourcePage({ params }: { params: Promise<{ id: str
           {facts.map((f) => (
             <li key={f.id} className="flex items-baseline gap-3 py-1">
               <Link href={`/notes/${f.subjectId}`} className={f.validTo ? "text-muted line-through decoration-faint" : "hover:text-ochre"}>
-                {f.statement}
+                {statementText(f.statement)}
               </Link>
               <span className="ml-auto shrink-0 text-[12.5px] text-faint">
                 {f.status === "active" ? `since ${day(f.validFrom)}` : f.status}

@@ -9,8 +9,8 @@ const SAMPLES = 96;
 
 type Props = {
   graph: Graph;
-  /** Cursor position. Omit for a read-only band. */
-  value?: Date;
+  /** Cursor position; null = now (the right edge). Omit together with onChange for a read-only band. */
+  value?: Date | null;
   onChange?: (d: Date) => void;
   height?: number;
 };
@@ -101,9 +101,10 @@ export function StrataBand({ graph, value, onChange, height = 92 }: Props) {
     return ((e.clientX - r.left) / r.width) * W;
   };
 
-  const interactive = !!onChange && !!value;
-  const cursorX = value ? xOf(value) : null;
-  const atNow = value ? end - +value < 86_400_000 : true;
+  const interactive = !!onChange;
+  const cur = value === null ? new Date(end) : value; // null → now, computed from the same rounded `end` on server and client
+  const cursorX = cur ? xOf(cur) : null;
+  const atNow = cur ? end - +cur < 86_400_000 : true;
 
   return (
     <div className="select-none">
@@ -117,14 +118,14 @@ export function StrataBand({ graph, value, onChange, height = 92 }: Props) {
         aria-label={interactive ? "Time: drag to see memory as it was" : "Memory over time"}
         aria-valuemin={interactive ? start : undefined}
         aria-valuemax={interactive ? end : undefined}
-        aria-valuenow={interactive ? +value! : undefined}
-        aria-valuetext={interactive ? day(value!) : undefined}
+        aria-valuenow={interactive && cur ? +cur : undefined}
+        aria-valuetext={interactive && cur ? day(cur) : undefined}
         tabIndex={interactive ? 0 : undefined}
         onKeyDown={(e) => {
           if (!interactive) return;
           const stepMs = (end - start) / 60;
-          if (e.key === "ArrowLeft") onChange!(new Date(Math.max(start, +value! - stepMs)));
-          if (e.key === "ArrowRight") onChange!(new Date(Math.min(end, +value! + stepMs)));
+          if (e.key === "ArrowLeft") onChange!(new Date(Math.max(start, +cur! - stepMs)));
+          if (e.key === "ArrowRight") onChange!(new Date(Math.min(end, +cur! + stepMs)));
           if (e.key === "End") onChange!(new Date(end));
           if (e.key === "Home") onChange!(new Date(start));
         }}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ReviewActions } from "@/components/review-actions";
 import { strata } from "@/lib/strata";
-import { day, displayName, predicateLabel } from "@/lib/format";
+import { day, displayName, predicateLabel, statementText } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Review" };
 
@@ -43,7 +43,7 @@ export default async function ReviewPage() {
                   ) : (
                     c.conflictsWith.map((o) => (
                       <div key={o.id} className="mt-1">
-                        <p className="text-[15px]">{o.statement}</p>
+                        <p className="text-[15px]">{statementText(o.statement)}</p>
                         <p className="text-[12.5px] text-faint">
                           since {day(o.validFrom)}
                           {o.sourceId && (
@@ -59,7 +59,7 @@ export default async function ReviewPage() {
                 </div>
                 <div className="bg-panel px-5 py-4">
                   <p className="text-[12.5px] text-cinnabar">New, conflicting</p>
-                  <p className="mt-1 text-[15px]">{c.statement}</p>
+                  <p className="mt-1 text-[15px]">{statementText(c.statement)}</p>
                   <p className="text-[12.5px] text-faint">
                     since {day(c.validFrom)}
                     {c.sourceId && (

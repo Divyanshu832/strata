@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { Channel, Graph, RecallItem, RecallResult } from "@stratamem/sdk";
 import { runRecall } from "@/app/actions";
-import { day } from "@/lib/format";
+import { day, statementText } from "@/lib/format";
 import { GraphView } from "./force-graph";
 
 const CHANNEL_LABEL: Record<Channel, string> = {
@@ -206,7 +206,7 @@ function Trace({ result, onOpen }: { result: RecallResult; onOpen: (id: string) 
       {result.chain && (
         <section>
           <h2 className="mb-2 text-[14px] font-semibold">Connected facts</h2>
-          <pre className="rounded-lg bg-panel px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-soft">{result.chain}</pre>
+          <pre className="rounded-lg bg-panel px-4 py-3 text-[13px] leading-relaxed whitespace-pre-wrap text-soft">{result.chain.replace(/^user$/gm, "You")}</pre>
         </section>
       )}
 
@@ -250,7 +250,7 @@ function Trace({ result, onOpen }: { result: RecallResult; onOpen: (id: string) 
 function ItemRow({ item }: { item: RecallItem }) {
   return (
     <li className="rounded-lg bg-panel px-4 py-2.5">
-      <p className="text-[14px] leading-snug">{item.text}</p>
+      <p className="text-[14px] leading-snug">{statementText(item.text)}</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px]">
         {item.type === "chunk" && <span className="rounded bg-raised px-1.5 text-muted">raw text</span>}
         {item.explain?.channels.map((c) => (

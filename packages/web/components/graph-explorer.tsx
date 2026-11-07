@@ -84,7 +84,7 @@ export function GraphExplorer({ initial, initialAt }: { initial: Graph; initialA
             </button>
           )}
         </div>
-        <StrataBand graph={graph} value={when} onChange={setAt} />
+        <StrataBand graph={graph} value={isNow ? null : when} onChange={setAt} />
       </div>
     </div>
   );

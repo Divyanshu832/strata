@@ -1,12 +1,15 @@
+import { homedir } from "node:os";
 import path from "node:path";
 import Link from "next/link";
 import { StrataBand, TypeLegend } from "@/components/strata-band";
 import { strata } from "@/lib/strata";
-import { ago, displayName, num } from "@/lib/format";
+import { ago, displayName, num, statementText } from "@/lib/format";
 
 export default async function Overview() {
   const [stats, graph, status] = await Promise.all([strata.stats(), strata.graph(), strata.status()]);
-  const mcpDir = path.resolve(process.cwd(), "..", "mcp");
+  // Shown as $HOME/… : the shell expands it when you run the command, and the page doesn't print your user name.
+  const abs = path.resolve(process.cwd(), "..", "mcp");
+  const mcpDir = abs.startsWith(homedir()) ? `"$HOME${abs.slice(homedir().length)}"` : abs;
   const empty = stats.currentFacts === 0 && stats.sources === 0;
 
   return (
@@ -54,7 +57,7 @@ export default async function Overview() {
               {stats.recent.map((f) => (
                 <li key={f.id} className="grid grid-cols-[1fr_auto] items-baseline gap-4 border-b border-line/60 py-2">
                   <span className={f.status === "replaced" || f.status === "merged" ? "text-muted line-through decoration-faint" : ""}>
-                    {f.statement}
+                    {statementText(f.statement)}
                     {f.status === "contradiction" && <span className="ml-2 text-[12px] text-cinnabar">conflicting</span>}
                   </span>
                   <span className="text-[12.5px] whitespace-nowrap text-faint">

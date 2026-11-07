@@ -13,7 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 
 async function load(id: string) {
   try {
-    return await Promise.all([strata.note(id), strata.neighbours(id, 2), strata.notes()]);
+    return await Promise.all([strata.note(id), strata.neighbours(id, 1), strata.notes()]);
   } catch (err) {
     if (err instanceof StrataError && (err.status === 404 || err.status === 400)) notFound();
     throw err;

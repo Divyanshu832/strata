@@ -62,3 +62,6 @@ export function ago(iso: string | Date, now = Date.now()): string {
 export const num = (n: number) => n.toLocaleString("en-US");
 
 export const usd = (n: number) => (n === 0 ? "$0" : n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);
+
+/** Statements written from parts start with "user …"; read them as "You …". */
+export const statementText = (s: string) => s.replace(/^user\b/, "You").replace(/^The user\b/, "You");

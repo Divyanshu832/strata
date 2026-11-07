@@ -192,7 +192,12 @@ export async function recall(workspaceId: string, input: RecallInput): Promise<R
     items = await rerank(input.query, items);
 
     // 5. Connected chain around the mentioned entities (or the top results' subjects), within its share.
-    const starts = entityIds.length
+    // Counted/dated by SQL: the chain is just what was counted (e.g. You → visited → Bloco), not everything
+    // around the subject. Otherwise: the notes named in the question, or the top relevant results' subjects.
+    const counted = answer?.factIds.length ? factRows.filter((r) => answer!.factIds.includes(r.id)) : [];
+    const starts = counted.length
+      ? [...new Set(counted.map((r) => r.object_id ?? r.subject_id))]
+      : entityIds.length
       ? entityIds
       : [...new Set(items.filter((i) => i.score > 0 && i.subjectId).slice(0, 3).map((i) => i.subjectId!))];
     // "Where did I live in March 2025?" → the links as they stood at the end of that window.

@@ -9,6 +9,7 @@ const config: NextConfig = {
   transpilePackages: ["@stratamem/sdk"],
   // Don't write an AGENTS.md into the package (the repo keeps only what's needed to run).
   agentRules: false,
+  devIndicators: false,
 };
 
 export default config;
