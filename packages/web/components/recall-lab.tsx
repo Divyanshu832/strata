@@ -183,7 +183,8 @@ function Trace({ result, onOpen }: { result: RecallResult; onOpen: (id: string) 
             {result.answer.value === null ? "No match" : result.answer.kind === "latest" ? day(String(result.answer.value)) : result.answer.value}
           </p>
           <p className="mt-2 text-[12.5px] text-faint">
-            From {result.answer.factIds.length} matching fact{result.answer.factIds.length === 1 ? "" : "s"}, cited below. No model counted anything.
+            {result.answer.matched && <>Events like “{result.answer.matched}”. </>}
+            {result.answer.factIds.length} matching fact{result.answer.factIds.length === 1 ? "" : "s"}, cited below. No model counted anything.
           </p>
         </section>
       )}

@@ -18,7 +18,10 @@ export function validityClause(route: Route): SQL {
   if (route.range?.from || route.range?.to) {
     const from = route.range.from ?? new Date(0);
     const to = route.range.to ?? new Date();
-    return sql`f.valid_from < ${at(to)} and (f.valid_to is null or f.valid_to > ${at(from)})`;
+    // Events happened on a day: inside the window. Other facts: true at some point during it.
+    return sql`(case when f.kind = 'event'
+      then f.valid_from >= ${at(from)} and f.valid_from < ${at(to)}
+      else f.valid_from < ${at(to)} and (f.valid_to is null or f.valid_to > ${at(from)}) end)`;
   }
   if (route.type === "temporal" || route.type === "count" || route.type === "episodic") {
     return sql`true`; // history questions may need replaced facts too

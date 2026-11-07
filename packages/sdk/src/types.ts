@@ -70,7 +70,7 @@ export type RecallItem = {
 export type RecallResult = {
   query: string;
   route: { type: QueryType; reason: string; asOf?: string; latest?: boolean; range?: { from?: string; to?: string } };
-  answer?: { kind: "count" | "latest"; value: number | string | null; factIds: string[]; sql: string };
+  answer?: { kind: "count" | "latest"; value: number | string | null; factIds: string[]; matched?: string; sql: string };
   chain: string;
   items: RecallItem[];
   tokens: number;
