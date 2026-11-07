@@ -1,0 +1,27 @@
+node_modules/
+dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+coverage/
+*.log
+.DS_Store
+
+# secrets: every env file stays local (only the example is published)
+.env
+.env.*
+!.env.example
+
+# python / benchmarks
+.venv/
+__pycache__/
+*.pyc
+bench/data/
+bench/results/
+
+# local-only: planning, handbook, agent config
+plan.md
+handbook.md
+handbook.pdf
+CLAUDE.md
+.claude/

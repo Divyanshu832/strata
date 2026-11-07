@@ -1,0 +1,18 @@
+{
+  "name": "strata",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.10.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @stratamem/server dev",
+    "dev:web": "pnpm --filter @stratamem/web dev",
+    "mcp": "pnpm --filter @stratamem/mcp start",
+    "migrate": "pnpm --filter @stratamem/server migrate",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}
