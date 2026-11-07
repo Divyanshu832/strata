@@ -53,6 +53,28 @@ claude mcp add strata -- pnpm --dir "$(pwd)/packages/mcp" start
 Tools: `remember`, `recall`, `forget`, `find_note`, `open_note`, `timeline`, `neighbours`. The server also
 tells Claude when to use them (recall before tasks that depend on you, remember durable facts).
 
+### Make your agent use it every session
+
+The MCP server's instructions are a hint, not a rule: in a long session an agent can forget to save. Paste
+this once into each agent you use (Claude Code, Cursor, Codex, ...) so it writes the rule into its own
+global instructions (for Claude Code, `~/.claude/CLAUDE.md`):
+
+```text
+Add this to your global instructions, the file you read at the start of every session in every project
+(create it if needed). Then show me the result.
+
+# Memory (Strata)
+Use the Strata MCP tools as long-term memory, shared across sessions and agents.
+- At the start of a task that involves people, companies, projects or past decisions, `recall` first.
+- Save lasting information with `remember`: decisions, facts about people/companies/projects, preferences,
+  events. Skip small talk, one-off details and anything only true for this task.
+- Save at natural checkpoints, not every reply: when a decision is made, when the user states something
+  lasting about themselves or their work, and when a task wraps up. Batch several facts into one call.
+- Always use full proper names ("Acme Corp", not "the company" or "my job"), so facts land on the right
+  note. Use subject "user" for the person you are helping.
+- Never save secrets (passwords, API keys, tokens) or other people's sensitive data.
+```
+
 ### Use it from code
 
 ```ts
