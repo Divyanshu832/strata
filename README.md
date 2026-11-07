@@ -16,14 +16,16 @@ linked notes and a graph, like an Obsidian vault.
   trimmed to a token budget.
 - **Nothing lost:** the original text is kept; old facts are closed, never deleted. Only `forget`
   deletes, and it is logged.
-- **Show its work:** `explain: true` says how each memory was found.
-- **Notes + graph web app:** backlinks, local graph, and a time slider over the whole graph.
+- **Show its work:** `explain: true` says how each memory was found (meaning, words, a link, or SQL),
+  and what the token budget cut.
+- **Conflicts are asked, not guessed:** two values for the same time are both kept and flagged for review.
+- **Notes + graph web app:** one note per person/project/place, `[[links]]`, backlinks, a local graph,
+  the whole memory as a graph with a time slider, a recall inspector, review, usage, and export to an
+  Obsidian vault. New memories appear live as agents write them.
 
 Runs locally and free: PostgreSQL + pgvector, and an embedding model that runs inside the server. An
 optional built-in extractor (any model via [OpenRouter](https://openrouter.ai)) handles raw text that has
 no agent behind it.
-
-> Status: early. The API, MCP server and web app are being built.
 
 ## Run it locally
 
@@ -45,7 +47,8 @@ pnpm dev:web                  # web app on http://localhost:3000
 claude mcp add strata -- pnpm --dir "$(pwd)/packages/mcp" start
 ```
 
-Tools: `remember`, `recall`, `forget`, `timeline`, `open_note`, `neighbours`.
+Tools: `remember`, `recall`, `forget`, `find_note`, `open_note`, `timeline`, `neighbours`. The server also
+tells Claude when to use them (recall before tasks that depend on you, remember durable facts).
 
 ### Use it from code
 
@@ -65,6 +68,28 @@ const memory = await strata.recall({ query: "Where do I live?", maxTokens: 1000 
 
 Raw text without `facts` is kept and indexed for search. With `EXTRACTOR=openrouter`, Strata's own
 extractor turns it into facts in the background.
+
+### Options (`.env`)
+
+| Variable | Default | What |
+|---|---|---|
+| `DATABASE_URL` | `postgres://localhost:5432/strata` | Postgres with pgvector |
+| `EXTRACTOR` | `none` | `openrouter` to extract facts from raw text on the server |
+| `OPENROUTER_API_KEY` | | needed for `EXTRACTOR=openrouter` and `POST /v1/answer` |
+| `RERANKER` | `none` | `local` adds a small cross-encoder (runs on this machine) |
+| `EMBEDDING_MODEL` | `Xenova/bge-small-en-v1.5` | downloaded once to `~/.cache/strata/models` |
+
+## Tests
+
+```bash
+pnpm test     # unit tests, plus end-to-end API tests when the database is reachable
+```
+
+## Benchmarks
+
+`bench/run.py` runs LongMemEval-S and a corrected LoCoMo against Strata, no memory, full context and
+Hindsight, with two answer models, and reports accuracy, tokens per answer, latency and $ per correct
+answer. See the docstring at the top of the file.
 
 ## Layout
 
