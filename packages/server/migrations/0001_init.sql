@@ -51,7 +51,7 @@ create table entities (
   aliases       text[] not null default '{}',
   summary       text,
   tags          text[] not null default '{}',
-  embedding     vector(768),
+  embedding     vector(384),
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -82,7 +82,7 @@ create table facts (
   pinned           boolean not null default false,
   source_id        uuid references sources(id) on delete set null,
   extractor_version text not null,
-  embedding        vector(768),
+  embedding        vector(384),
   tsv              tsvector generated always as (to_tsvector('english', statement)) stored,
   check (object_id is not null or object_value is not null)
 );
@@ -101,7 +101,7 @@ create table chunks (
   source_id     uuid not null references sources(id) on delete cascade,
   ordinal       int not null,
   content       text not null,
-  embedding     vector(768),
+  embedding     vector(384),
   tsv           tsvector generated always as (to_tsvector('english', content)) stored
 );
 create index chunks_tsv_idx       on chunks using gin (tsv);

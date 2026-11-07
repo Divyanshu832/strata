@@ -1,12 +1,13 @@
-// POST /v1/answer: answer a question straight from memory (used by benchmarks and simple agents).
+// POST /v1/answer: answer a question straight from memory. Optional (needs OPENROUTER_API_KEY);
+// normally your agent reads /recall and writes the reply itself. Used by the benchmarks.
 import { config } from "../config.js";
-import { generateText } from "./llm.js";
+import { generateText, type Usage } from "./llm.js";
 import { recall, type RecallInput, type RecallResult } from "./recall.js";
 
 export type AnswerResult = {
   answer: string;
   recall: RecallResult;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: Usage;
 };
 
 /** Formats the recalled memory as the context block given to the answering model. */

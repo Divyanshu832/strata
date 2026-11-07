@@ -7,17 +7,26 @@ import { withWorkspace } from "../db/client.js";
 import { auditLog, facts, sources } from "../db/schema.js";
 import type { AuthVars } from "../lib/auth.js";
 import { enqueueExtract } from "../jobs/queue.js";
-import { storeSource } from "../services/write.js";
+import { applyFacts, storeSource } from "../services/write.js";
+import { AgentFact, EntityHint, statementOf } from "../services/memory-input.js";
 
-const Ingest = z.object({
-  content: z.string().min(1),
-  kind: z.enum(["message", "session", "document"]).optional(),
-  scope: z.string().optional(),
-  author: z.string().optional(),
-  externalId: z.string().optional(),
-  occurredAt: z.string().datetime({ offset: true }).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
+/**
+ * One memory. Send `facts` (your agent already extracted them; saved right away, no LLM), or only
+ * `content` (raw text; processed in the background by the Strata extractor if enabled, else indexed).
+ */
+const Ingest = z
+  .object({
+    content: z.string().min(1).optional(),
+    facts: z.array(AgentFact).max(100).optional(),
+    entities: z.array(EntityHint).optional(),
+    kind: z.enum(["message", "session", "document"]).optional(),
+    scope: z.string().optional(),
+    author: z.string().optional(),
+    externalId: z.string().optional(),
+    occurredAt: z.string().datetime({ offset: true }).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((m) => m.content || m.facts?.length, { message: "send content, facts, or both" });
 
 const Patch = z.object({
   statement: z.string().min(1).optional(),
@@ -27,18 +36,27 @@ const Patch = z.object({
 });
 
 export const memories = new Hono<{ Variables: AuthVars }>()
-  // Store one or many sources; extraction runs in the background.
+  // Store one or many memories.
   .post("/memories", zValidator("json", z.union([Ingest, z.object({ items: z.array(Ingest).min(1).max(100) })])), async (c) => {
     const ws = c.get("workspaceId");
     const body = c.req.valid("json");
     const items = "items" in body ? body.items : [body];
     const stored = [];
     for (const item of items) {
-      const s = await storeSource(ws, item);
-      if (!s.duplicate) await enqueueExtract({ workspaceId: ws, sourceId: s.id });
-      stored.push(s);
+      // The source is always kept. With only facts, it is the facts written out as sentences.
+      const content = item.content ?? (item.facts ?? []).map(statementOf).join("\n");
+      const s = await storeSource(ws, { ...item, content });
+      if (s.duplicate) {
+        stored.push({ ...s, mode: "duplicate" as const });
+      } else if (item.facts?.length) {
+        const result = await applyFacts(ws, s.id, { facts: item.facts, entities: item.entities ?? [] });
+        stored.push({ ...s, mode: "facts" as const, result });
+      } else {
+        await enqueueExtract({ workspaceId: ws, sourceId: s.id });
+        stored.push({ ...s, mode: "queued" as const });
+      }
     }
-    return c.json({ sources: stored }, 202);
+    return c.json({ sources: stored }, 201);
   })
 
   .get("/memories", async (c) => {

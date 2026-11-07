@@ -7,6 +7,7 @@ import type {
   RecallInput,
   RecallResult,
   RememberInput,
+  RememberResult,
 } from "./types.ts";
 
 export type * from "./types.ts";
@@ -39,10 +40,10 @@ export class Strata {
     return (await res.json()) as T;
   }
 
-  /** Store messages; facts are extracted in the background. */
+  /** Store facts your agent extracted (saved right away) and/or raw text (processed in the background). */
   remember(input: RememberInput | RememberInput[]) {
     const body = Array.isArray(input) ? { items: input } : input;
-    return this.request<{ sources: { id: string; duplicate: boolean }[] }>("POST", "/memories", body);
+    return this.request<RememberResult>("POST", "/memories", body);
   }
 
   recall(input: RecallInput) {

@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { withWorkspace } from "../db/client.js";
 import { estimateTokens } from "../lib/tokens.js";
 import { DEFAULT_BUDGET, pack } from "./budget.js";
-import { embed } from "./embed.js";
+import { embedQuery } from "./embed.js";
 import { neighbours } from "./graph.js";
 import { formatChain } from "./notes.js";
 import { rerank } from "./rerank.js";
@@ -57,7 +57,7 @@ export type RecallResult = {
 export async function recall(workspaceId: string, input: RecallInput): Promise<RecallResult> {
   const route = routeQuery(input.query, input.now);
   const budget = input.maxTokens ?? DEFAULT_BUDGET[route.type];
-  const [queryVec] = await embed([input.query]);
+  const queryVec = await embedQuery(input.query);
   const filters: Filters = { workspaceId, scopes: input.scopes, route };
 
   return withWorkspace(workspaceId, async (tx) => {
@@ -65,12 +65,12 @@ export async function recall(workspaceId: string, input: RecallInput): Promise<R
 
     // 1. SQL path for counts and "when did I last".
     let answer: StructuredAnswer | undefined;
-    if (route.type === "count") answer = await countFacts(tx, filters, input.query, queryVec!, entityIds);
-    else if (route.type === "temporal" && route.latest) answer = await latestFact(tx, filters, input.query, queryVec!, entityIds);
+    if (route.type === "count") answer = await countFacts(tx, filters, input.query, queryVec, entityIds);
+    else if (route.type === "temporal" && route.latest) answer = await latestFact(tx, filters, input.query, queryVec, entityIds);
 
     // 2. Hybrid search, fused.
     const lists: Ranked[][] = [
-      await vectorSearch(tx, filters, queryVec!),
+      await vectorSearch(tx, filters, queryVec),
       await textSearch(tx, filters, input.query),
       await graphSearch(tx, filters, entityIds),
     ];

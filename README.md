@@ -3,32 +3,33 @@
 **Memory for your AI agents that can count, cite, and show its work.**
 
 Strata is one memory shared by all your agents: Claude Code (MCP), your own apps (REST API / TypeScript
-SDK) and automations. It pulls facts out of conversations, keeps them current over time (a new fact
-replaces the old one, and the history is kept), and shows memory as linked notes and a graph, like an
-Obsidian vault.
+SDK) and automations. Your agent decides what is worth remembering and sends it as facts; Strata keeps
+them current over time (a new fact replaces the old one, and the history is kept) and shows memory as
+linked notes and a graph, like an Obsidian vault.
 
+- **Your agent extracts, Strata remembers:** no LLM inside Strata by default. The agent you already use
+  sends structured facts; Strata matches names, replaces old facts, flags conflicts and indexes them.
 - **Time-aware facts:** every fact has a `valid_from` / `valid_to`. Ask "what was true in March".
 - **Counts and dates from SQL:** "how many times…" and "when did I last…" are answered by Postgres, not
   by an LLM guessing.
 - **Connected recall:** one call returns the linked facts around the people and projects you asked about,
   trimmed to a token budget.
-- **Nothing lost:** raw messages are kept; old facts are closed, never deleted. Only `forget` deletes,
-  and it is logged.
+- **Nothing lost:** the original text is kept; old facts are closed, never deleted. Only `forget`
+  deletes, and it is logged.
 - **Show its work:** `explain: true` says how each memory was found.
 - **Notes + graph web app:** backlinks, local graph, and a time slider over the whole graph.
 
-Runs fully local and free: PostgreSQL + pgvector and [Ollama](https://ollama.com). Anthropic and OpenAI
-are optional.
+Runs locally and free: PostgreSQL + pgvector, and an embedding model that runs inside the server. An
+optional built-in extractor (any model via [OpenRouter](https://openrouter.ai)) handles raw text that has
+no agent behind it.
 
 > Status: early. The API, MCP server and web app are being built.
 
 ## Run it locally
 
-You need Node 22+, [pnpm](https://pnpm.io), [Postgres.app](https://postgresapp.com) (includes pgvector)
-and [Ollama](https://ollama.com).
+You need Node 22+, [pnpm](https://pnpm.io) and [Postgres.app](https://postgresapp.com) (includes pgvector).
 
 ```bash
-ollama pull qwen3:8b && ollama pull nomic-embed-text
 createdb strata
 cp .env.example .env          # set STRATA_ADMIN_TOKEN to any long random string
 pnpm install
@@ -52,9 +53,18 @@ Tools: `remember`, `recall`, `forget`, `timeline`, `open_note`, `neighbours`.
 import { Strata } from "@stratamem/sdk";
 
 const strata = new Strata({ apiKey: process.env.STRATA_API_KEY! });
-await strata.remember({ content: "I moved to Pune in May." });
+
+// Your agent extracted this fact; Strata saves it as-is.
+await strata.remember({
+  content: "I moved to Pune in May.",
+  facts: [{ subject: "user", predicate: "lives_in", object: "Pune", exclusive: true, validFrom: "2026-05-01" }],
+});
+
 const memory = await strata.recall({ query: "Where do I live?", maxTokens: 1000 });
 ```
+
+Raw text without `facts` is kept and indexed for search. With `EXTRACTOR=openrouter`, Strata's own
+extractor turns it into facts in the background.
 
 ## Layout
 

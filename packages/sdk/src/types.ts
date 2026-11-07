@@ -3,8 +3,27 @@
 export type QueryType = "count" | "temporal" | "episodic" | "lookup" | "open";
 export type Channel = "vector" | "text" | "graph" | "sql";
 
+/** A fact your agent extracted. Saved right away; Strata needs no LLM for it. */
+export type AgentFact = {
+  subject: string; // 'user' for the person the agent is helping
+  predicate: string; // snake_case: lives_in, works_on, prefers, decided
+  object: string;
+  objectType?: "entity" | "value"; // default 'entity' (gets its own note)
+  statement?: string;
+  kind?: "fact" | "preference" | "event";
+  exclusive?: boolean; // only one value at a time (a new one replaces the old)
+  validFrom?: string; // ISO date
+  context?: string;
+  strength?: number;
+};
+
+export type EntityHint = { name: string; type?: "person" | "org" | "project" | "place" | "topic" | "thing"; aliases?: string[] };
+
+/** Send `facts` (extracted by your agent), raw `content`, or both. */
 export type RememberInput = {
-  content: string;
+  content?: string;
+  facts?: AgentFact[];
+  entities?: EntityHint[];
   kind?: "message" | "session" | "document";
   scope?: string;
   author?: string;
@@ -47,7 +66,16 @@ export type RecallResult = {
 export type AnswerResult = {
   answer: string;
   recall: RecallResult;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: { inputTokens: number; outputTokens: number; costUsd?: number };
+};
+
+export type RememberResult = {
+  sources: {
+    id: string;
+    duplicate: boolean;
+    mode: "facts" | "queued" | "duplicate";
+    result?: { added: number; skipped: number; updated: number; contradictions: number };
+  }[];
 };
 
 export type NoteSummary = { id: string; name: string; type: string; tags: string[]; facts: number };

@@ -7,6 +7,7 @@ import { memories } from "./routes/memories.js";
 import { recallRoutes } from "./routes/recall.js";
 import { notes } from "./routes/notes.js";
 import { admin } from "./routes/admin.js";
+import { LlmDisabledError } from "./services/llm.js";
 
 const v1 = new Hono<{ Variables: AuthVars }>()
   .use("*", requireApiKey)
@@ -24,6 +25,7 @@ export const app = new Hono()
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) return c.json({ error: err.message }, err.status);
+  if (err instanceof LlmDisabledError) return c.json({ error: err.message }, 501);
   console.error(err);
   return c.json({ error: "internal error" }, 500);
 });

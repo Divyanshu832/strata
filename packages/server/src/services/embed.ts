@@ -1,30 +1,25 @@
-// Embeddings for facts, entities and chunks. Default: Ollama (local). Optional: OpenAI.
-import OpenAI from "openai";
+// Embeddings run inside the server (transformers.js, ONNX). Free, offline after the first model download,
+// no service to install. Default model: bge-small-en-v1.5 (384 numbers per text).
+import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
 import { config } from "../config.js";
 
-let openai: OpenAI | undefined;
+// bge models expect this prefix on search queries (not on stored text).
+const QUERY_PREFIX = "Represent this sentence for searching relevant passages: ";
 
+let extractor: Promise<FeatureExtractionPipeline> | undefined;
+const model = () => (extractor ??= pipeline("feature-extraction", config.EMBEDDING_MODEL, { dtype: "q8" }));
+
+/** Embed stored text (facts, chunks). */
 export async function embed(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
+  const out = await (await model())(texts, { pooling: "cls", normalize: true });
+  return out.tolist() as number[][];
+}
 
-  if (config.EMBEDDINGS_PROVIDER === "openai") {
-    openai ??= new OpenAI({ apiKey: config.OPENAI_API_KEY });
-    const res = await openai.embeddings.create({
-      model: config.EMBEDDING_MODEL,
-      input: texts,
-      dimensions: config.EMBEDDING_DIM,
-    });
-    return res.data.map((d) => d.embedding);
-  }
-
-  const res = await fetch(`${config.OLLAMA_URL}/api/embed`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ model: config.EMBEDDING_MODEL, input: texts }),
-  });
-  if (!res.ok) throw new Error(`ollama embed failed: ${res.status} ${await res.text()}`);
-  const body = (await res.json()) as { embeddings: number[][] };
-  return body.embeddings;
+/** Embed a search query. */
+export async function embedQuery(query: string): Promise<number[]> {
+  const [v] = await embed([QUERY_PREFIX + query]);
+  return v!;
 }
 
 /** pgvector literal, e.g. '[0.1,0.2]'. */

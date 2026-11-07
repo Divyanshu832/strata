@@ -1,8 +1,9 @@
 // Background jobs on pg-boss (a job queue that lives in the same Postgres).
-// Writes return immediately; extraction runs here so agents are never slowed down.
+// Raw-text sources are processed here (Strata extractor if enabled, else indexed as chunks),
+// so writes return immediately. Facts sent by agents are saved directly, not through the queue.
 import { PgBoss } from "pg-boss";
 import { config } from "../config.js";
-import { processSource } from "../services/write.js";
+import { processRawSource } from "../services/write.js";
 
 export const QUEUES = {
   extract: "extract-source",
@@ -25,8 +26,8 @@ export async function startQueue(): Promise<PgBoss> {
 
   await boss.work<ExtractJob>(QUEUES.extract, async (jobs) => {
     for (const job of jobs) {
-      const result = await processSource(job.data.workspaceId, job.data.sourceId);
-      console.log(`[extract] source ${job.data.sourceId}:`, result);
+      const result = await processRawSource(job.data.workspaceId, job.data.sourceId);
+      console.log(`[raw-source] source ${job.data.sourceId}:`, result);
     }
   });
   return boss;

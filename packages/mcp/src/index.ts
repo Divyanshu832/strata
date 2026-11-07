@@ -16,11 +16,31 @@ const text = (value: unknown) => ({
   content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
 });
 
+// You (the agent) do the extraction: read the conversation, keep only durable information, and send it
+// as facts. Strata saves them without any LLM of its own.
+const Fact = z.object({
+  subject: z.string().describe("Who/what the fact is about. 'user' for the person you are helping."),
+  predicate: z.string().describe("snake_case relation: lives_in, works_on, prefers, decided, visited, ..."),
+  object: z.string().describe("Entity name ('Pune', 'Strata', 'Harshit') or a plain value ('dark mode')."),
+  objectType: z.enum(["entity", "value"]).optional().describe("'entity' (default) if it deserves its own note; 'value' otherwise."),
+  kind: z.enum(["fact", "preference", "event"]).optional(),
+  exclusive: z.boolean().optional().describe("True if only one value can hold at a time (lives_in, job_title): a new value replaces the old."),
+  validFrom: z.string().optional().describe("ISO date it became true / happened, if known."),
+  statement: z.string().optional().describe("The fact as one short sentence."),
+});
+
 server.registerTool(
   "remember",
   {
-    description: "Save something worth remembering (a message, decision, preference or fact). Facts are extracted in the background.",
-    inputSchema: { content: z.string(), scope: z.string().optional(), occurredAt: z.string().optional() },
+    description:
+      "Save durable information for later: facts about people, projects and places, the user's preferences, " +
+      "decisions and events. Extract them yourself as facts (skip small talk and one-off details). " +
+      "Include the original message as `content` when useful, so the source is kept.",
+    inputSchema: {
+      facts: z.array(Fact),
+      content: z.string().optional().describe("The original text the facts came from."),
+      scope: z.string().optional().describe("e.g. 'user', or a project name to keep memories separate."),
+    },
   },
   async (args) => text(await strata.remember(args)),
 );
