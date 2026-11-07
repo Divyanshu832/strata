@@ -27,3 +27,4 @@ CLAUDE.md
 .claude/
 __pycache__/
 *.tsbuildinfo
+screenshots/
