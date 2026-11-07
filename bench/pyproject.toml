@@ -1,0 +1,11 @@
+[project]
+name = "strata-bench"
+version = "0.1.0"
+description = "Benchmark runner for Strata (LongMemEval-S, corrected LoCoMo)"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28",
+]
+
+[tool.uv]
+package = false

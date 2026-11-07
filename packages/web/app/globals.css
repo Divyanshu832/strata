@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Dark by default (Obsidian-like). Tokens are placeholders until the design pass. */
+:root {
+  --bg: #1e1e1e;
+  --panel: #252525;
+  --border: #333333;
+  --text: #dcddde;
+  --muted: #8a8a8a;
+  --accent: #7f6df2;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  height: 100%;
+}

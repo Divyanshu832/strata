@@ -55,7 +55,7 @@ export const entities = pgTable("entities", {
   aliases: text("aliases").array().notNull().default(sql`'{}'`),
   summary: text("summary"),
   tags: text("tags").array().notNull().default(sql`'{}'`),
-  embedding: vector("embedding", { dimensions: 1536 }),
+  embedding: vector("embedding", { dimensions: 768 }),
   createdAt: ts("created_at").notNull().defaultNow(),
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
@@ -81,7 +81,7 @@ export const facts = pgTable("facts", {
   pinned: boolean("pinned").notNull().default(false),
   sourceId: uuid("source_id"),
   extractorVersion: text("extractor_version").notNull(),
-  embedding: vector("embedding", { dimensions: 1536 }),
+  embedding: vector("embedding", { dimensions: 768 }),
 });
 
 export const chunks = pgTable("chunks", {
@@ -91,7 +91,7 @@ export const chunks = pgTable("chunks", {
   sourceId: uuid("source_id").notNull(),
   ordinal: integer("ordinal").notNull(),
   content: text("content").notNull(),
-  embedding: vector("embedding", { dimensions: 1536 }),
+  embedding: vector("embedding", { dimensions: 768 }),
 });
 
 export const auditLog = pgTable("audit_log", {

@@ -1,8 +1,7 @@
 // Step 2 of the write path: one cheap LLM call turns a raw message into entities and facts.
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { config } from "../config.js";
+import { generateJson } from "./llm.js";
 
 export const Extraction = z.object({
   entities: z.array(
@@ -37,28 +36,16 @@ Skip small talk, questions, and anything only relevant to the current turn.
 Use 'user' as the subject for facts about the speaker. Resolve relative dates ("yesterday", "last
 March") against the message time given. If nothing is worth remembering, return empty lists.`;
 
-let client: Anthropic | undefined;
-const anthropic = () => (client ??= new Anthropic({ apiKey: config.ANTHROPIC_API_KEY }));
-
 export async function extract(input: {
   content: string;
   author?: string | null;
   occurredAt: Date;
 }): Promise<Extraction> {
-  const response = await anthropic().messages.parse({
+  const { data } = await generateJson({
     model: config.EXTRACT_MODEL,
-    max_tokens: 8000,
-    output_config: { effort: "low", format: zodOutputFormat(Extraction) },
     system: SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: `Message time: ${input.occurredAt.toISOString()}\nAuthor: ${input.author ?? "user"}\n\n${input.content}`,
-      },
-    ],
+    user: `Message time: ${input.occurredAt.toISOString()}\nAuthor: ${input.author ?? "user"}\n\n${input.content}`,
+    schema: Extraction,
   });
-  if (response.stop_reason === "refusal" || !response.parsed_output) {
-    return { entities: [], facts: [] };
-  }
-  return response.parsed_output;
+  return data ?? { entities: [], facts: [] };
 }
