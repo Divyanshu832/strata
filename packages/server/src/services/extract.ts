@@ -1,7 +1,7 @@
 // Optional Strata extractor: turns raw text into the same MemoryPayload an agent would send.
 // Only used when EXTRACTOR=openrouter (for sources with no agent behind them: imports, plain webhooks).
 import { config } from "../config.js";
-import { generateJson } from "./llm.js";
+import { generateJson, type Usage } from "./llm.js";
 import { MemoryPayload } from "./memory-input.js";
 
 /** Bump when the prompt or schema changes, so re-extraction can find facts made by older versions. */
@@ -14,12 +14,16 @@ Skip small talk, questions, and anything only relevant to the current turn.
 Use 'user' as the subject for facts about the speaker. Resolve relative dates ("yesterday", "last
 March") against the message time given. If nothing is worth remembering, return empty lists.`;
 
-export async function extract(input: { content: string; author?: string | null; occurredAt: Date }): Promise<MemoryPayload> {
-  const { data } = await generateJson({
+export async function extract(input: {
+  content: string;
+  author?: string | null;
+  occurredAt: Date;
+}): Promise<{ payload: MemoryPayload; usage: Usage }> {
+  const { data, usage } = await generateJson({
     model: config.EXTRACTOR_MODEL,
     system: SYSTEM,
     user: `Message time: ${input.occurredAt.toISOString()}\nAuthor: ${input.author ?? "user"}\n\n${input.content}`,
     schema: MemoryPayload,
   });
-  return data ?? { facts: [], entities: [] };
+  return { payload: data ?? { facts: [], entities: [] }, usage };
 }

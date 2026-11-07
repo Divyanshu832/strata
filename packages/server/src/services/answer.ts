@@ -1,7 +1,8 @@
 // POST /v1/answer: answer a question straight from memory. Optional (needs OPENROUTER_API_KEY);
 // normally your agent reads /recall and writes the reply itself. Used by the benchmarks.
 import { config } from "../config.js";
-import { generateText, type Usage } from "./llm.js";
+import { generateText, LlmDisabledError, llmEnabled, type Usage } from "./llm.js";
+import { logUsage } from "./usage.js";
 import { recall, type RecallInput, type RecallResult } from "./recall.js";
 
 export type AnswerResult = {
@@ -25,13 +26,26 @@ export async function answer(
   workspaceId: string,
   input: RecallInput & { model?: string },
 ): Promise<AnswerResult> {
+  if (!llmEnabled()) throw new LlmDisabledError();
+  const started = performance.now();
   const r = await recall(workspaceId, input);
+  const today = (input.now ?? new Date()).toISOString().slice(0, 10);
   const { text, usage } = await generateText({
     model: input.model ?? config.ANSWER_MODEL,
     system:
       "Answer the question using only the memory below. If a database result is given, trust its count or date. " +
       "If the memory does not contain the answer, say you don't know. Be brief.",
-    user: `Memory:\n${memoryContext(r)}\n\nQuestion: ${input.query}`,
+    user: `Today's date: ${today}\n\nMemory:\n${memoryContext(r)}\n\nQuestion: ${input.query}`,
+  });
+  void logUsage(workspaceId, {
+    kind: "answer",
+    route: r.route.type,
+    items: r.items.length,
+    tokens: r.tokens,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    costUsd: usage.costUsd,
+    latencyMs: performance.now() - started,
   });
   return { answer: text, recall: r, usage };
 }

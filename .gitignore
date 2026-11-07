@@ -25,3 +25,4 @@ handbook.md
 handbook.pdf
 CLAUDE.md
 .claude/
+__pycache__/

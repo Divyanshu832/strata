@@ -17,20 +17,27 @@ export type Decision =
   | { action: "add" }
   | { action: "skip"; duplicateOf: string }
   | { action: "update"; replaces: string[] } // close the old facts' valid_to at candidate.validFrom
-  | { action: "contradiction"; conflictsWith: string[] }; // keep both, flag for review
+  | { action: "history"; closeAt: Date; supersededBy: string; replaces: string[] } // an older value: store it already closed
+  | { action: "contradiction"; conflictsWith: string[] }; // same time, different value: keep both, flag
 
 export function reconcile(current: CurrentFact[], candidate: Candidate): Decision {
-  const same = current.find((f) => f.objectKey === candidate.objectKey);
-  if (same) return { action: "skip", duplicateOf: same.id };
+  const dup = current.find((f) => f.objectKey === candidate.objectKey);
+  if (dup) return { action: "skip", duplicateOf: dup.id };
 
   if (!candidate.exclusive || current.length === 0) return { action: "add" };
 
-  // Exclusive predicate with a different value. If the new fact is newer, it replaces the old one.
-  // If it claims to be older than what we already hold, we can't tell who is right: flag it.
-  const older = current.filter((f) => f.validFrom <= candidate.validFrom);
-  const newer = current.filter((f) => f.validFrom > candidate.validFrom);
-  if (newer.length > 0) return { action: "contradiction", conflictsWith: newer.map((f) => f.id) };
-  return { action: "update", replaces: older.map((f) => f.id) };
+  // Exclusive predicate with a different value:
+  //  - claims the same start time as a value we hold → we can't tell who is right: flag it;
+  //  - newer than what we hold → it replaces the old value (old one closed, kept as history);
+  //  - older than what we hold → it is history: stored already closed where the newer value starts.
+  const t = +candidate.validFrom;
+  const same = current.filter((f) => +f.validFrom === t);
+  if (same.length > 0) return { action: "contradiction", conflictsWith: same.map((f) => f.id) };
+  const older = current.filter((f) => +f.validFrom < t).map((f) => f.id);
+  const newer = current.filter((f) => +f.validFrom > t);
+  if (newer.length === 0) return { action: "update", replaces: older };
+  const next = newer.reduce((a, b) => (+b.validFrom < +a.validFrom ? b : a));
+  return { action: "history", closeAt: next.validFrom, supersededBy: next.id, replaces: older };
 }
 
 /** Normalise a plain object value so "Bhopal" and " bhopal " count as the same. */

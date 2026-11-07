@@ -2,6 +2,7 @@
 // counting retrieved text. The matched rows come back as citations so the answer can be checked.
 import { sql } from "drizzle-orm";
 import type { Tx } from "../db/client.js";
+import { uuids } from "../db/client.js";
 import { toVector } from "./embed.js";
 import { validityClause, type Filters } from "./search.js";
 
@@ -21,7 +22,7 @@ export type StructuredAnswer = {
  */
 function matchClause(filters: Filters, query: string, queryVec: number[], entityIds: string[]) {
   const entity = entityIds.length
-    ? sql`and (f.subject_id = any(${entityIds}) or f.object_id = any(${entityIds}))`
+    ? sql`and (f.subject_id = any(${uuids(entityIds)}) or f.object_id = any(${uuids(entityIds)}))`
     : sql``;
   return sql`
     f.workspace_id = ${filters.workspaceId}

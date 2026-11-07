@@ -6,6 +6,7 @@ import {
   boolean,
   integer,
   jsonb,
+  numeric,
   pgTable,
   real,
   text,
@@ -75,7 +76,7 @@ export const facts = pgTable("facts", {
   validFrom: ts("valid_from").notNull(),
   validTo: ts("valid_to"),
   recordedAt: ts("recorded_at").notNull().defaultNow(),
-  status: text("status", { enum: ["active", "replaced", "contradiction"] }).notNull().default("active"),
+  status: text("status", { enum: ["active", "replaced", "contradiction", "merged"] }).notNull().default("active"),
   supersededBy: uuid("superseded_by"),
   confidence: real("confidence").notNull().default(1),
   pinned: boolean("pinned").notNull().default(false),
@@ -103,6 +104,20 @@ export const auditLog = pgTable("audit_log", {
   targetId: uuid("target_id").notNull(),
   before: jsonb("before"),
   after: jsonb("after"),
+  at: ts("at").notNull().defaultNow(),
+});
+
+export const usageEvents = pgTable("usage_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  workspaceId: uuid("workspace_id").notNull(),
+  kind: text("kind", { enum: ["remember", "recall", "answer", "extract"] }).notNull(),
+  route: text("route"),
+  items: integer("items").notNull().default(0),
+  tokens: integer("tokens").notNull().default(0),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  costUsd: numeric("cost_usd", { mode: "number" }).notNull().default(0),
+  latencyMs: integer("latency_ms").notNull().default(0),
   at: ts("at").notNull().defaultNow(),
 });
 

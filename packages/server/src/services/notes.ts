@@ -89,7 +89,8 @@ export type Graph = { nodes: GraphNode[]; edges: GraphEdge[] };
  *   Harshit
  *     works_on → Strata (since 2026-10-01)
  */
-export function formatChain(graph: Graph, startIds: string[]): string {
+export function formatChain(graph: Graph, startIds: string[], at?: Date): string {
+  const holds = (e: GraphEdge) => (at ? e.validFrom <= at && (e.validTo === null || e.validTo > at) : e.validTo === null);
   const names = new Map(graph.nodes.map((n) => [n.id, n.name]));
   const out: string[] = [];
   const seen = new Set<string>();
@@ -97,11 +98,17 @@ export function formatChain(graph: Graph, startIds: string[]): string {
   for (const id of order) {
     if (seen.has(id)) continue;
     seen.add(id);
-    const edges = graph.edges.filter((e) => e.source === id && e.validTo === null);
+    const edges = graph.edges.filter((e) => e.source === id && holds(e)).sort((a, b) => +b.validFrom - +a.validFrom);
     if (edges.length === 0) continue;
     out.push(names.get(id) ?? id);
-    for (const e of edges) {
-      out.push(`  ${e.predicate} → ${names.get(e.target) ?? e.target} (since ${day(e.validFrom)})`);
+    // Repeated events collapse to one line: "visited → Gym (4×, latest 2026-11-02)".
+    const groups = new Map<string, GraphEdge[]>();
+    for (const e of edges) groups.set(`${e.predicate}|${e.target}`, [...(groups.get(`${e.predicate}|${e.target}`) ?? []), e]);
+    for (const group of groups.values()) {
+      const e = group[0]!;
+      const when = group.length > 1 ? `${group.length}×, latest ${day(e.validFrom)}` : `since ${day(e.validFrom)}`;
+      const flag = group.some((g) => g.status === "contradiction") ? ", conflicting" : "";
+      out.push(`  ${e.predicate} → ${names.get(e.target) ?? e.target} (${when}${flag})`);
     }
   }
   return out.join("\n");

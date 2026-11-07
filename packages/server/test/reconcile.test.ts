@@ -22,9 +22,16 @@ describe("reconcile", () => {
     expect(r).toEqual({ action: "update", replaces: ["a"] });
   });
 
-  it("flags a contradiction when the new value claims to be older than what we hold", () => {
+  it("stores an older value as closed history (learned late that the user lived in Bhopal before)", () => {
     const r = reconcile([{ id: "a", objectKey: "pune", validFrom: d("2026-05-01") }], {
       objectKey: "bhopal", exclusive: true, validFrom: d("2026-01-01"),
+    });
+    expect(r).toEqual({ action: "history", closeAt: d("2026-05-01"), supersededBy: "a", replaces: [] });
+  });
+
+  it("flags a contradiction when two values claim the same start time", () => {
+    const r = reconcile([{ id: "a", objectKey: "pune", validFrom: d("2026-05-01") }], {
+      objectKey: "mumbai", exclusive: true, validFrom: d("2026-05-01"),
     });
     expect(r).toEqual({ action: "contradiction", conflictsWith: ["a"] });
   });

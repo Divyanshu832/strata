@@ -8,6 +8,7 @@ import { auditLog, facts, sources } from "../db/schema.js";
 import type { AuthVars } from "../lib/auth.js";
 import { enqueueExtract } from "../jobs/queue.js";
 import { applyFacts, storeSource } from "../services/write.js";
+import { publish } from "../services/events.js";
 import { AgentFact, EntityHint, statementOf } from "../services/memory-input.js";
 
 /**
@@ -49,7 +50,11 @@ export const memories = new Hono<{ Variables: AuthVars }>()
       if (s.duplicate) {
         stored.push({ ...s, mode: "duplicate" as const });
       } else if (item.facts?.length) {
-        const result = await applyFacts(ws, s.id, { facts: item.facts, entities: item.entities ?? [] });
+        const result = await applyFacts(ws, s.id, { facts: item.facts, entities: item.entities ?? [] }).catch(async (err) => {
+          // The source is already stored; index its text so it stays findable, then report the error.
+          await enqueueExtract({ workspaceId: ws, sourceId: s.id }).catch(() => {});
+          throw err;
+        });
         stored.push({ ...s, mode: "facts" as const, result });
       } else {
         await enqueueExtract({ workspaceId: ws, sourceId: s.id });
@@ -62,17 +67,27 @@ export const memories = new Hono<{ Variables: AuthVars }>()
   .get("/memories", async (c) => {
     const ws = c.get("workspaceId");
     const status = c.req.query("status");
-    const limit = Math.min(Number(c.req.query("limit") ?? 50), 200);
+    const q = c.req.query("q")?.trim();
+    const limit = Math.min(Number(c.req.query("limit") ?? 50) || 50, 200);
+    const offset = Math.max(Number(c.req.query("offset") ?? 0) || 0, 0);
     const rows = await withWorkspace(ws, (tx) =>
       tx
         .select({
           id: facts.id, statement: facts.statement, kind: facts.kind, predicate: facts.predicate,
-          validFrom: facts.validFrom, validTo: facts.validTo, status: facts.status, pinned: facts.pinned,
+          validFrom: facts.validFrom, validTo: facts.validTo, recordedAt: facts.recordedAt, status: facts.status,
+          pinned: facts.pinned, subjectId: facts.subjectId, sourceId: facts.sourceId,
         })
         .from(facts)
-        .where(and(eq(facts.workspaceId, ws), status ? sql`${facts.status} = ${status}` : undefined))
+        .where(
+          and(
+            eq(facts.workspaceId, ws),
+            status ? sql`${facts.status} = ${status}` : undefined,
+            q ? sql`${facts.statement} ilike ${"%" + q + "%"}` : undefined,
+          ),
+        )
         .orderBy(desc(facts.recordedAt))
-        .limit(limit),
+        .limit(limit)
+        .offset(offset),
     );
     return c.json({ facts: rows });
   })
@@ -121,6 +136,7 @@ export const memories = new Hono<{ Variables: AuthVars }>()
       return after;
     });
     if (!updated) throw new HTTPException(404, { message: "not found" });
+    publish(ws, { type: "changed", target: "fact", id, action: "edit" });
     const { embedding: _e, ...rest } = updated;
     return c.json({ fact: rest });
   })
@@ -141,5 +157,6 @@ export const memories = new Hono<{ Variables: AuthVars }>()
       return true;
     });
     if (!ok) throw new HTTPException(404, { message: "not found" });
+    publish(ws, { type: "changed", target: "fact", id, action: "forget" });
     return c.json({ forgotten: id });
   });

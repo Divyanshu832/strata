@@ -1,6 +1,6 @@
 // Database side of notes and graph: load notes, neighbours (server-side link following), full graph.
 import { sql } from "drizzle-orm";
-import type { Tx } from "../db/client.js";
+import { at, uuids, type Tx } from "../db/client.js";
 import type { Backlink, Graph, GraphEdge, GraphNode, NoteFact, NoteInput } from "./notes.js";
 
 type EdgeRow = {
@@ -24,7 +24,7 @@ const toEdge = (r: EdgeRow): GraphEdge => ({
 });
 
 async function loadNodes(tx: Tx, workspaceId: string, ids?: string[]): Promise<GraphNode[]> {
-  const filter = ids ? sql`and e.id = any(${ids})` : sql``;
+  const filter = ids ? sql`and e.id = any(${uuids(ids)})` : sql``;
   const rows = await tx.execute<{ id: string; name: string; type: string; degree: number }>(sql`
     select e.id, e.name, e.type,
       (select count(*) from facts f where f.workspace_id = e.workspace_id
@@ -45,21 +45,25 @@ export async function fullGraph(tx: Tx, workspaceId: string): Promise<Graph> {
  * Follow links on the server, `hops` steps out from the start entities, current facts only.
  * This is what lets an agent get the connected chain in one call instead of clicking around.
  */
-export async function neighbours(tx: Tx, workspaceId: string, startIds: string[], hops = 2): Promise<Graph> {
+export async function neighbours(tx: Tx, workspaceId: string, startIds: string[], hops = 2, asOf?: Date): Promise<Graph> {
   if (startIds.length === 0) return { nodes: [], edges: [] };
+  // Current links, or the links that were true at `asOf`.
+  const valid = asOf
+    ? sql`f.valid_from <= ${at(asOf)} and (f.valid_to is null or f.valid_to > ${at(asOf)})`
+    : sql`f.valid_to is null`;
   const rows = await tx.execute<EdgeRow>(sql`
     with recursive walk(entity_id, depth) as (
-      select unnest(${startIds}::uuid[]), 0
+      select unnest(${uuids(startIds)}), 0
       union
       select case when f.subject_id = w.entity_id then f.object_id else f.subject_id end, w.depth + 1
       from walk w
-      join facts f on f.workspace_id = ${workspaceId} and f.valid_to is null and f.object_id is not null
+      join facts f on f.workspace_id = ${workspaceId} and ${valid} and f.object_id is not null
         and (f.subject_id = w.entity_id or f.object_id = w.entity_id)
       where w.depth < ${hops}
     )
     select distinct f.id, f.subject_id, f.object_id, f.predicate, f.valid_from, f.valid_to, f.status
     from facts f
-    where f.workspace_id = ${workspaceId} and f.valid_to is null and f.object_id is not null
+    where f.workspace_id = ${workspaceId} and ${valid} and f.object_id is not null
       and f.subject_id in (select entity_id from walk) and f.object_id in (select entity_id from walk)`);
   const edges = rows.map(toEdge);
   const ids = [...new Set([...startIds, ...edges.flatMap((e) => [e.source, e.target])])];
