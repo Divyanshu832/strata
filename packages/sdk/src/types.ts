@@ -125,6 +125,9 @@ export type NoteFact = {
   validTo: string | null;
   status: FactStatus;
   sourceId: string | null;
+  objectType: string | null;
+  kind: "fact" | "preference" | "event";
+  pinned: boolean;
 };
 
 export type Note = {
@@ -134,7 +137,7 @@ export type Note = {
   aliases: string[];
   tags: string[];
   facts: NoteFact[];
-  backlinks: { factId: string; fromId: string; fromName: string; predicate: string }[];
+  backlinks: { factId: string; fromId: string; fromName: string; fromType: string; predicate: string }[];
 };
 
 export type NotePatch = { name?: string; type?: EntityType; aliases?: string[]; tags?: string[]; summary?: string | null };

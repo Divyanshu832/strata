@@ -35,7 +35,7 @@ export function routeQuery(query: string, now: Date = new Date()): Route {
   if (/\bwhat (did we|have we) (decide|agree|plan|discuss)|\bwhat happened\b|\bremember when\b/.test(q)) {
     return { type: "episodic", range, reason: "asks about a past event or decision" };
   }
-  if (/^(what|who|where|which)\s+(is|are|does|do)\b/.test(q)) {
+  if (/^(what|who|where|which|whose)\b|^how (long|much|old|far|big)\b|^(do|does|did|is|are|am) (i|my|we)\b/.test(q)) {
     return { type: "lookup", reason: "direct fact question" };
   }
   return { type: "open", range, reason: "no specific pattern" };

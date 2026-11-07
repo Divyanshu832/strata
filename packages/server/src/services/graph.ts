@@ -78,15 +78,16 @@ export async function loadNote(tx: Tx, workspaceId: string, entityId: string): P
   const factRows = await tx.execute<{
     id: string; predicate: string; statement: string; object_id: string | null; object_name: string | null;
     object_value: string | null; valid_from: string; valid_to: string | null; status: NoteFact["status"]; source_id: string | null;
+    object_type: string | null; kind: NoteFact["kind"]; pinned: boolean;
   }>(sql`
-    select f.id, f.predicate, f.statement, f.object_id, o.name as object_name, f.object_value,
-           f.valid_from, f.valid_to, f.status, f.source_id
+    select f.id, f.predicate, f.statement, f.object_id, o.name as object_name, o.type as object_type, f.object_value,
+           f.valid_from, f.valid_to, f.status, f.source_id, f.kind, f.pinned
     from facts f left join entities o on o.id = f.object_id
     where f.workspace_id = ${workspaceId} and f.subject_id = ${entityId}
     order by f.valid_from desc`);
 
-  const backRows = await tx.execute<{ fact_id: string; from_id: string; from_name: string; predicate: string }>(sql`
-    select f.id as fact_id, s.id as from_id, s.name as from_name, f.predicate
+  const backRows = await tx.execute<{ fact_id: string; from_id: string; from_name: string; from_type: string; predicate: string }>(sql`
+    select f.id as fact_id, s.id as from_id, s.name as from_name, s.type as from_type, f.predicate
     from facts f join entities s on s.id = f.subject_id
     where f.workspace_id = ${workspaceId} and f.object_id = ${entityId} and f.valid_to is null`);
 
@@ -101,9 +102,12 @@ export async function loadNote(tx: Tx, workspaceId: string, entityId: string): P
     validTo: r.valid_to ? new Date(r.valid_to) : null,
     status: r.status,
     sourceId: r.source_id,
+    objectType: r.object_type,
+    kind: r.kind,
+    pinned: r.pinned,
   }));
   const backlinks: Backlink[] = backRows.map((r) => ({
-    factId: r.fact_id, fromId: r.from_id, fromName: r.from_name, predicate: r.predicate,
+    factId: r.fact_id, fromId: r.from_id, fromName: r.from_name, fromType: r.from_type, predicate: r.predicate,
   }));
   return { ...entity, facts, backlinks };
 }

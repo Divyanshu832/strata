@@ -27,13 +27,15 @@ export function startQueue(): Promise<PgBoss> {
     await b.start();
     for (const name of Object.values(QUEUES)) await b.createQueue(name);
 
-    await b.work<SourceJob>(QUEUES.extract, async (jobs) => {
+    // Poll often and drain backlogs fast: bulk imports (and benchmarks) queue many sources at once.
+    const fast = { batchSize: 4, pollingIntervalSeconds: 0.5, burstWhenBatchFull: true, localConcurrency: 2 };
+    await b.work<SourceJob>(QUEUES.extract, fast, async (jobs) => {
       for (const job of jobs) {
         const result = await processRawSource(job.data.workspaceId, job.data.sourceId);
         console.log(`[extract] source ${job.data.sourceId}:`, result);
       }
     });
-    await b.work<SourceJob>(QUEUES.reextract, async (jobs) => {
+    await b.work<SourceJob>(QUEUES.reextract, fast, async (jobs) => {
       for (const job of jobs) {
         const result = await reextractSource(job.data.workspaceId, job.data.sourceId);
         console.log(`[reextract] source ${job.data.sourceId}:`, result);

@@ -26,3 +26,4 @@ handbook.pdf
 CLAUDE.md
 .claude/
 __pycache__/
+*.tsbuildinfo

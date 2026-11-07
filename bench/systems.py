@@ -8,6 +8,7 @@ Baselines and Hindsight use the same answer prompt (llm.ANSWER_SYSTEM); Strata a
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
 
@@ -25,11 +26,14 @@ class NoMemory:
     name = "no-memory"
     uses_budget = False
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM, keep_workspaces: bool = False):
         self.llm = llm
 
     def setup(self, context_id: str, sessions: list[dict]) -> None:
         pass
+
+    def teardown(self) -> float:
+        return 0.0
 
     def answer(self, sample: dict, model: str, budget: int | None) -> dict:
         out = self.llm.answer(model, sample["question"], sample["question_date"], None)
@@ -48,15 +52,17 @@ class FullContext(NoMemory):
 
 
 class Strata:
-    """Fresh workspace per history; each session is one raw source, extracted by the Strata extractor.
+    """Fresh workspace per history; each session is one raw source.
 
-    Needs the server running with EXTRACTOR=openrouter (otherwise raw text is only chunk-indexed).
+    With EXTRACTOR=openrouter on the server, sessions become facts; with EXTRACTOR=none they are chunked and
+    embedded locally, and recall searches the chunks. The workspace is deleted after the sample, and its
+    extraction cost (from /v1/usage) is added to the answers' cost.
     """
 
     name = "strata"
     uses_budget = True
 
-    def __init__(self, llm: LLM, wait_s: float = 1800, idle_s: float = 90):
+    def __init__(self, llm: LLM | None, wait_s: float = 3600, keep_workspaces: bool = False):
         url = os.environ.get("STRATA_URL", "http://localhost:8787")
         admin = os.environ.get("STRATA_ADMIN_TOKEN", "")
         if not admin:
@@ -64,8 +70,9 @@ class Strata:
         self.http = httpx.Client(base_url=url, timeout=600)
         self.admin = {"authorization": f"Bearer {admin}"}
         self.wait_s = wait_s
-        self.idle_s = idle_s  # an extraction call can take a while; wait this long with no new fact
+        self.keep = keep_workspaces
         self.key = ""
+        self.workspace_id = ""
 
     def _auth(self) -> dict:
         return {"authorization": f"Bearer {self.key}"}
@@ -74,6 +81,7 @@ class Strata:
         res = self.http.post("/admin/workspaces", json={"name": f"bench-{context_id}-{uuid.uuid4().hex[:6]}"}, headers=self.admin)
         res.raise_for_status()
         self.key = res.json()["apiKey"]
+        self.workspace_id = res.json()["workspace"]["id"]
 
         items = [
             {"content": session_text(s), "kind": "session", "occurredAt": s["date"], "externalId": s["id"]}
@@ -81,23 +89,28 @@ class Strata:
         ]
         for i in range(0, len(items), 100):  # the API takes up to 100 items per call
             self.http.post("/v1/memories", json={"items": items[i : i + 100]}, headers=self._auth()).raise_for_status()
-        self._wait_for_extraction()
+        self._wait_for_processing()
 
-    def _wait_for_extraction(self) -> None:
-        """No job-status endpoint: wait until no new fact has been recorded for idle_s seconds."""
+    def _wait_for_processing(self) -> None:
+        """Poll /v1/status until every raw source has been extracted or indexed."""
         deadline = time.time() + self.wait_s
-        last, stable = None, 0
         while time.time() < deadline:
-            res = self.http.get("/v1/memories", params={"limit": 1}, headers=self._auth())
+            res = self.http.get("/v1/status", headers=self._auth())
             res.raise_for_status()
-            facts = res.json()["facts"]
-            newest = facts[0]["id"] if facts else None  # newest recorded fact
-            stable = stable + 1 if newest is not None and newest == last else 0
-            if stable * 5 >= self.idle_s:
+            if res.json()["pendingSources"] == 0:
                 return
-            last = newest
-            time.sleep(5)
-        print(f"  warning: extraction still running after {self.wait_s:.0f}s")
+            time.sleep(1)
+        print(f"  warning: sources still pending after {self.wait_s:.0f}s")
+
+    def teardown(self) -> float:
+        """Returns this workspace's extraction cost in USD, then deletes the workspace (unless kept)."""
+        cost = 0.0
+        res = self.http.get("/v1/usage", params={"days": 1}, headers=self._auth())
+        if res.is_success:
+            cost = sum(t.get("costUsd") or 0.0 for t in res.json().get("totals", []) if t.get("kind") == "extract")
+        if not self.keep:
+            self.http.delete(f"/admin/workspaces/{self.workspace_id}", headers=self.admin).raise_for_status()
+        return cost
 
     def answer(self, sample: dict, model: str, budget: int | None) -> dict:
         body = {"query": sample["question"], "model": model, "now": sample["question_date"]}
@@ -117,6 +130,41 @@ class Strata:
             "context_tokens": (data.get("recall") or {}).get("tokens", 0),
         }
 
+    def recall_only(self, sample: dict, budget: int | None) -> dict:
+        """No LLM: retrieved tokens, latency, and whether the gold answer appears in what was recalled."""
+        body = {"query": sample["question"], "now": sample["question_date"]}
+        if budget:
+            body["maxTokens"] = budget
+        start = time.perf_counter()
+        res = self.http.post("/v1/recall", json=body, headers=self._auth())
+        res.raise_for_status()
+        latency = (time.perf_counter() - start) * 1000
+        data = res.json()
+        items = data.get("items", [])
+        parts = [data.get("chain") or ""] + [i.get("text", "") for i in items]
+        if data.get("answer"):
+            parts.append(str(data["answer"].get("value")))
+        text = "\n".join(parts)
+        return {
+            "answer": text[:2000],
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cost_usd": 0.0,
+            "latency_ms": latency,
+            "context_tokens": data.get("tokens", 0),
+            "route": (data.get("route") or {}).get("type"),
+            "items_fact": sum(1 for i in items if i.get("type") == "fact"),
+            "items_chunk": sum(1 for i in items if i.get("type") == "chunk"),
+            "hit": answer_in(sample["answer"], text),
+        }
+
+
+def answer_in(expected: str, text: str) -> bool:
+    """Cheap retrieval check: the gold answer string (case and punctuation ignored) occurs in the text."""
+    norm = lambda s: " ".join(re.sub(r"[^a-z0-9]+", " ", s.lower()).split())
+    gold = norm(expected)
+    return bool(gold) and gold in norm(text)
+
 
 class Hindsight:
     """vectorize-io/hindsight over its REST API (default http://localhost:8888).
@@ -129,8 +177,9 @@ class Hindsight:
     name = "hindsight"
     uses_budget = True
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM, keep_workspaces: bool = False):
         self.llm = llm
+        self.keep = keep_workspaces
         self.http = httpx.Client(base_url=os.environ.get("HINDSIGHT_URL", "http://localhost:8888"), timeout=1800)
         self.bank = ""
 
@@ -143,6 +192,11 @@ class Hindsight:
         items = [{"content": session_text(s), "timestamp": s["date"], "document_id": s["id"]} for s in sessions]
         for i in range(0, len(items), 10):
             self.http.post(self._path("/memories"), json={"items": items[i : i + 10], "async": False}).raise_for_status()
+
+    def teardown(self) -> float:
+        if not self.keep:
+            self.http.delete(self._path())
+        return 0.0  # Hindsight's own extraction cost is not exposed over its API
 
     def answer(self, sample: dict, model: str, budget: int | None) -> dict:
         start = time.perf_counter()

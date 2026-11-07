@@ -31,4 +31,13 @@ describe("splitText", () => {
     expect(parts.every((p) => p.length <= 200)).toBe(true);
     expect(parts.every((p) => p.endsWith("."))).toBe(true);
   });
+
+  it("cuts transcripts between turns and keeps line breaks", () => {
+    const turn = (who: string, i: number) => `${who}: message number ${i} with some words in it.`;
+    const text = Array.from({ length: 30 }, (_, i) => turn(i % 2 ? "assistant" : "user", i)).join("\n");
+    const parts = splitText(text, 200);
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.every((p) => /^(user|assistant): /.test(p))).toBe(true);
+    expect(parts[0]).toContain("\n");
+  });
 });

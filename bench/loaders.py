@@ -144,7 +144,12 @@ def load_locomo_corrected(include_adversarial: bool = False) -> list[dict]:
     return out
 
 
-DATASETS = {"longmemeval-s": load_longmemeval_s, "locomo-corrected": load_locomo_corrected}
+DATASETS = {
+    "longmemeval-s": load_longmemeval_s,
+    "longmemeval": load_longmemeval_s,  # alias
+    "locomo-corrected": load_locomo_corrected,
+    "locomo": load_locomo_corrected,  # alias (always the corrected answers)
+}
 
 
 def session_text(session: dict) -> str:

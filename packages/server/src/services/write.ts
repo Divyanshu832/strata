@@ -218,20 +218,28 @@ export async function indexChunks(workspaceId: string, sourceId: string): Promis
   return parts.length;
 }
 
-/** ~1,000-character chunks on paragraph/sentence boundaries. */
+/**
+ * ~1,000-character chunks. Line breaks are kept and preferred as cut points, so a chat transcript
+ * splits between turns ("user: ..." / "assistant: ...") and a citation starts at a speaker label.
+ * Lines longer than a chunk are cut on sentence boundaries.
+ */
 export function splitText(text: string, size = 1000): string[] {
-  const pieces = text.split(/(?<=[.!?])\s+|\n{2,}/);
+  const pieces = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .flatMap((line) => (line.length > size ? line.split(/(?<=[.!?])\s+/) : [line]));
   const out: string[] = [];
   let current = "";
   for (const piece of pieces) {
     if (current && current.length + piece.length + 1 > size) {
-      out.push(current.trim());
+      out.push(current);
       current = "";
     }
-    current += (current ? " " : "") + piece;
+    current += (current ? (current.endsWith("\n") ? "" : "\n") : "") + piece;
   }
-  if (current.trim()) out.push(current.trim());
-  return out;
+  if (current.trim()) out.push(current);
+  return out.map((c) => c.trim());
 }
 
 async function reconcileOne(tx: Tx, workspaceId: string, subjectId: string, f: AgentFact, objectId: string | null, validFrom: Date) {

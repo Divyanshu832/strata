@@ -1,6 +1,10 @@
-import { Placeholder } from "@/components/nav";
+import type { Metadata } from "next";
+import { RecallLab } from "@/components/recall-lab";
+import { strata } from "@/lib/strata";
 
-// TODO(W4): run a recall with explain=true and light up the path on the graph.
-export default function RecallPage() {
-  return <Placeholder title="Recall">Try a query and see why each memory came back.</Placeholder>;
+export const metadata: Metadata = { title: "Recall" };
+
+export default async function RecallPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const [{ q }, graph] = await Promise.all([searchParams, strata.graph()]);
+  return <RecallLab graph={graph} initialQuery={q} />;
 }

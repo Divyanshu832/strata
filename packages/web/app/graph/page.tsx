@@ -1,7 +1,10 @@
-import { Placeholder } from "@/components/nav";
+import type { Metadata } from "next";
+import { GraphExplorer } from "@/components/graph-explorer";
+import { strata } from "@/lib/strata";
 
-// TODO(W4): full node mesh (d3-force layout, WebGL drawing), hover highlight, click to open,
-// filters by type/tag, and the time slider (GET /v1/graph?at=<date>).
-export default function GraphPage() {
-  return <Placeholder title="Graph">Graph view with time slider goes here.</Placeholder>;
+export const metadata: Metadata = { title: "Graph" };
+
+export default async function GraphPage({ searchParams }: { searchParams: Promise<{ at?: string }> }) {
+  const [{ at }, graph] = await Promise.all([searchParams, strata.graph()]);
+  return <GraphExplorer initial={graph} initialAt={at} />;
 }

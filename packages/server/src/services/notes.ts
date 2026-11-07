@@ -10,11 +10,14 @@ export type NoteFact = {
   objectValue: string | null;
   validFrom: Date;
   validTo: Date | null;
-  status: "active" | "replaced" | "contradiction";
+  status: "active" | "replaced" | "contradiction" | "merged";
   sourceId: string | null;
+  objectType?: string | null;
+  kind?: "fact" | "preference" | "event";
+  pinned?: boolean;
 };
 
-export type Backlink = { factId: string; fromId: string; fromName: string; predicate: string };
+export type Backlink = { factId: string; fromId: string; fromName: string; fromType?: string; predicate: string };
 
 export type NoteInput = {
   name: string;

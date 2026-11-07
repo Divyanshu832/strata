@@ -25,6 +25,11 @@ describe("routeQuery", () => {
     expect(routeQuery("What did we decide about the Strata name?", now).type).toBe("episodic");
   });
 
+  it("treats past-tense and how-long questions without dates as lookups", () => {
+    expect(routeQuery("What degree did I graduate with?", now).type).toBe("lookup");
+    expect(routeQuery("How long is my daily commute?", now).type).toBe("lookup");
+  });
+
   it("detects direct lookups", () => {
     expect(routeQuery("Where does Harshit work?", now).type).toBe("lookup");
   });
