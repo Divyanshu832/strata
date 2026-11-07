@@ -2,6 +2,8 @@
 
 **Memory for your AI agents that can count, cite, and show its work.**
 
+Repo: [github.com/Divyanshu832/strata](https://github.com/Divyanshu832/strata)
+
 Strata is one memory shared by all your agents: Claude Code (MCP), your own apps (REST API / TypeScript
 SDK) and automations. Your agent decides what is worth remembering and sends it as facts; Strata keeps
 them current over time (a new fact replaces the old one, and the history is kept) and shows memory as
@@ -32,6 +34,7 @@ no agent behind it.
 You need Node 22+, [pnpm](https://pnpm.io) and [Postgres.app](https://postgresapp.com) (includes pgvector).
 
 ```bash
+git clone https://github.com/Divyanshu832/strata.git && cd strata
 createdb strata
 cp .env.example .env          # set STRATA_ADMIN_TOKEN to any long random string
 pnpm install
