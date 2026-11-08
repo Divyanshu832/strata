@@ -18,7 +18,7 @@ facts; Strata keeps them current over time, links them into notes like an Obsidi
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Tests](https://img.shields.io/badge/tests-39%20passing-4fbf8f?style=flat-square)](#-development)
-[![License](https://img.shields.io/badge/license-MIT-e2ab4c?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-e2ab4c?style=flat-square)](LICENSE)
 
 **Works with**
 
@@ -364,8 +364,18 @@ pnpm test        # 39 unit tests, plus end-to-end API tests when the database is
 - [ ] Light theme
 - [ ] Faster bulk ingest (batched embeddings)
 
+## 📄 License
+
+Strata is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+- ✅ **Free** for personal projects, study, research, hobby use, and for charities, schools and public institutions.
+- ✅ You can read, run, change and share it, as long as you keep the license with it.
+- ❌ **No commercial use**: you can't sell it, offer it as a paid service, or use it in a commercial product.
+
+Want to use Strata commercially? [Get in touch](https://github.com/Divyanshu832).
+
 ---
 
 <div align="center">
-<sub>Built by <a href="https://github.com/Divyanshu832">Divyanshu Shekhar</a>. MIT licensed.</sub>
+<sub>Built by <a href="https://github.com/Divyanshu832">Divyanshu Shekhar</a>. Free for noncommercial use under the <a href="LICENSE">PolyForm Noncommercial License</a>.</sub>
 </div>
