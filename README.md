@@ -38,8 +38,8 @@ facts; Strata keeps them current over time, links them into notes like an Obsidi
 [Screens](#-what-you-get) ·
 [Quick start](#-quick-start) ·
 [Connect an agent](#-connect-an-agent) ·
-[Configuration](#%EF%B8%8F-configuration) ·
-[Architecture](#%EF%B8%8F-architecture)
+[Configuration](#-configuration) ·
+[Architecture](#-architecture)
 
 <br />
 
