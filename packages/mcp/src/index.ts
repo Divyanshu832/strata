@@ -13,7 +13,10 @@ const strata = new Strata({
 const INSTRUCTIONS = `Strata is your long-term memory, shared with the user's other agents.
 - At the start of a task that may depend on the user, their people, projects or past decisions, call recall.
 - When you learn something durable (facts about people/projects/places, preferences, decisions, events),
-  call remember with facts you extracted yourself. Skip small talk and one-off details.
+  call remember with facts you extracted yourself. Save every decision, big or small, as kind "event" with
+  predicate "decided". Skip small talk and one-off details.
+- Use full proper names and subject "user" for the user. Prefer entity objects (user · reports_to · Andrea)
+  over long sentences as values. Pass validFrom only when you know it; otherwise leave it out.
 - Mark facts that can hold only one value at a time (lives_in, works_at, job_title) as exclusive: a new value
   replaces the old one and the old one is kept as history.
 - Counts and dates ("how many times", "when did I last") are answered by the database: trust that value.

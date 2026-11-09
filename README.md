@@ -38,6 +38,7 @@ facts; Strata keeps them current over time, links them into notes like an Obsidi
 [Screens](#-what-you-get) ·
 [Quick start](#-quick-start) ·
 [Connect an agent](#-connect-an-agent) ·
+[Hooks](#-never-miss-a-memory-claude-code-hooks) ·
 [Configuration](#-configuration) ·
 [Architecture](#-architecture)
 
@@ -280,6 +281,40 @@ Use the Strata MCP tools as long-term memory, shared across sessions and agents.
   note. Use subject "user" for the person you are helping.
 - Never save secrets (passwords, API keys, tokens) or other people's sensitive data.
 ```
+
+</details>
+
+### 🪝 Never miss a memory: Claude Code hooks
+
+Instructions are a request; hooks are a guarantee. `packages/mcp/hooks/claude-code.mjs` plugs into Claude
+Code's lifecycle so memory works even when the model forgets:
+
+| Hook | What it does |
+|---|---|
+| `SessionStart` | Injects a **memory brief**: who you are, this project, the latest memories |
+| `UserPromptSubmit` | **Recalls** what Strata knows about your message and adds it to the context |
+| `Stop` | Saves the new part of the conversation as **searchable raw text** (secrets redacted, tool output skipped). Every 6 prompts it runs a **checkpoint**: the agent must save decisions and facts with `remember` before it stops |
+| `PreCompact` | Saves everything before the context is compacted, then asks for a checkpoint |
+| `SessionEnd` | Saves whatever is left |
+
+<details>
+<summary><b>Add them to <code>~/.claude/settings.json</code></b></summary>
+
+```json
+{
+  "hooks": {
+    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs session-start" }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs prompt" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs stop" }] }],
+    "PreCompact":       [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs pre-compact" }] }],
+    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs session-end" }] }]
+  }
+}
+```
+
+It reads `STRATA_URL` and `STRATA_API_KEY` from the environment or the repo's `.env`. Set
+`STRATA_CHECKPOINT_EVERY` to change how often checkpoints run, or `STRATA_HOOK_RECALL=0` to turn off
+per-message recall. Plain JavaScript, no build: it starts in about 60 ms.
 
 </details>
 
