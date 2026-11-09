@@ -15,8 +15,9 @@ const INSTRUCTIONS = `Strata is your long-term memory, shared with the user's ot
 - When you learn something durable (facts about people/projects/places, preferences, decisions, events),
   call remember with facts you extracted yourself. Save every decision, big or small, as kind "event" with
   predicate "decided". Skip small talk and one-off details.
-- Use full proper names and subject "user" for the user. Prefer entity objects (user · reports_to · Andrea)
-  over long sentences as values. Pass validFrom only when you know it; otherwise leave it out.
+- Use full proper names and subject "user" for the user. When the object is a named person, company,
+  project, place or tool, send it as an entity (user · reports_to · Andrea Rimmaudo); when it is a
+  description, a decision or a preference, send objectType "value" and put the whole thing in the statement. Pass validFrom only when you know it; otherwise leave it out.
 - Mark facts that can hold only one value at a time (lives_in, works_at, job_title) as exclusive: a new value
   replaces the old one and the old one is kept as history.
 - Counts and dates ("how many times", "when did I last") are answered by the database: trust that value.
@@ -46,7 +47,7 @@ const Fact = z.object({
   subject: z.string().describe("Who/what the fact is about. 'user' for the person you are helping."),
   predicate: z.string().describe("snake_case relation: lives_in, works_on, prefers, decided, visited, ..."),
   object: z.string().describe("Entity name ('Pune', 'Strata', 'Harshit') or a plain value ('dark mode')."),
-  objectType: z.enum(["entity", "value"]).optional().describe("'entity' (default) if it deserves its own note; 'value' otherwise."),
+  objectType: z.enum(["entity", "value"]).optional().describe("'entity' (default) only for a named person/company/project/place/tool that deserves its own note; 'value' for descriptions, decisions and preferences."),
   kind: z.enum(["fact", "preference", "event"]).optional(),
   exclusive: z.boolean().optional().describe("True if only one value can hold at a time (lives_in, job_title): a new value replaces the old."),
   validFrom: z.string().optional().describe("ISO date it became true / happened, if known."),

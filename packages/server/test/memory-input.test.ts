@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryPayload, statementOf } from "../src/services/memory-input.js";
+import { looksLikeName } from "../src/services/entities.js";
 import { splitText } from "../src/services/write.js";
 
 describe("agent memory payload", () => {
@@ -39,5 +40,19 @@ describe("splitText", () => {
     expect(parts.length).toBeGreaterThan(1);
     expect(parts.every((p) => /^(user|assistant): /.test(p))).toBe(true);
     expect(parts[0]).toContain("\n");
+  });
+});
+
+describe("looksLikeName", () => {
+  it("keeps real names as notes", () => {
+    for (const n of ["Kaching Bundles", "video-gen", "Amazon ML Challenge 2026", "Bioceutica Milano tote bag product",
+      "RITARDO10", "fal.ai", "Bank of America", "Andrea Rimmaudo"]) expect(looksLikeName(n), n).toBe(true);
+  });
+
+  it("turns descriptions into plain values", () => {
+    for (const d of ["keep one-step COD form", "caps deal price at list price", "COD button at €0",
+      "a pipeline for AI-generated 2D/3D animated story shorts", "~/projects/video-gen/research/reports/x.md",
+      "Cash on Delivery at Shopify checkout", "Remotion as the video editor for video-gen, and more",
+      "video-gen target cost is $8-9 per 60s video at most"]) expect(looksLikeName(d), d).toBe(false);
   });
 });

@@ -41,8 +41,8 @@ the source of truth about me, my work, my people and every decision we have made
 - Save with \`remember\` as soon as something lasting comes up: every decision, big or small (what and why),
   facts about people, companies, projects and tools, my preferences and rules, and corrections I make.
   Batch several facts into one call. Checkpoints will also ask you to save; do it properly.
-- Full proper names ("Acme Corp", not "the company"); subject "user" for me. Prefer entity objects
-  ("user · reports_to · Dana Lee") over long sentences. Mark one-value facts (job_title, lives_in) exclusive.
+- Full proper names ("Acme Corp", not "the company"); subject "user" for me. Named people, companies,
+  projects and tools are entity objects ("user · reports_to · Dana Lee"); descriptions are values. Mark one-value facts (job_title, lives_in) exclusive.
   Pass validFrom only when you actually know it.
 - Never save secrets (passwords, API keys, tokens) or other people's sensitive data.
 

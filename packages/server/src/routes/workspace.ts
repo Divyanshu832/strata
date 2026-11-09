@@ -10,7 +10,7 @@ import { config } from "../config.js";
 import type { AuthVars } from "../lib/auth.js";
 import { enqueueReextract } from "../jobs/queue.js";
 import { subscribe } from "../services/events.js";
-import { findDuplicates, mergeDuplicates, staleSources } from "../services/maintenance.js";
+import { findDuplicates, findPhraseNotes, fixPhraseNotes, mergeDuplicates, staleSources } from "../services/maintenance.js";
 import { usageSummary } from "../services/usage.js";
 import { llmEnabled } from "../services/llm.js";
 import { rerankEnabled } from "../services/rerank.js";
@@ -133,6 +133,11 @@ export const workspace = new Hono<{ Variables: AuthVars }>()
     const ws = c.get("workspaceId");
     const { dryRun } = c.req.valid("json");
     return c.json({ dryRun, pairs: dryRun ? await findDuplicates(ws) : await mergeDuplicates(ws) });
+  })
+  .post("/maintenance/phrase-notes", zValidator("json", z.object({ dryRun: z.boolean().default(true) })), async (c) => {
+    const ws = c.get("workspaceId");
+    const { dryRun } = c.req.valid("json");
+    return c.json({ dryRun, notes: dryRun ? await findPhraseNotes(ws) : await fixPhraseNotes(ws) });
   })
   .post("/maintenance/reextract", zValidator("json", z.object({ dryRun: z.boolean().default(true) })), async (c) => {
     const ws = c.get("workspaceId");

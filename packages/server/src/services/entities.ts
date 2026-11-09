@@ -49,3 +49,21 @@ async function addAliases(tx: Tx, entity: Entity, extra: string[]): Promise<Enti
 /** "me", "I", "myself" all mean the person the agent is helping. */
 const SELF = new Set(["user", "me", "i", "myself", "the user"]);
 export const canonicalName = (name: string) => (SELF.has(name.trim().toLowerCase()) ? "user" : name.trim());
+
+const CONNECTORS = /\s(at|for|with|in|on|to|from|over|before|after|into|than|as|is|are|was)\s/i;
+
+/**
+ * Whether an object is a name worth its own note ("Kaching Bundles", "video-gen", "Amazon ML Challenge 2026")
+ * rather than a description ("keep one-step COD form", "caps deal price at list price"). Agents often send
+ * descriptions as entities; a description becomes a plain value so it doesn't clutter the notes.
+ */
+export function looksLikeName(object: string): boolean {
+  const s = object.trim();
+  if (!s || s.length > 60) return false;
+  if (/[;:,()$€£%~/\\]|\d+\s*[-–]\s*\d+/.test(s)) return false;
+  const words = s.split(/\s+/);
+  if (words.length > 6) return false;
+  if (words.length > 1 && /^[a-z]/.test(s)) return false; // "keep one-step COD form", "a pipeline for …"
+  if (words.length > 3 && CONNECTORS.test(` ${s} `)) return false; // "Cash on Delivery at Shopify checkout"
+  return true;
+}

@@ -4,6 +4,7 @@
 import { sql } from "drizzle-orm";
 import { withWorkspace } from "../db/client.js";
 import { EXTRACTOR_VERSION } from "./extract.js";
+import { looksLikeName } from "./entities.js";
 import { publish } from "./events.js";
 
 /** Same subject and predicate, and statements this close in meaning, count as the same fact. */
@@ -56,4 +57,36 @@ export async function staleSources(workspaceId: string): Promise<{ sourceId: str
       group by source_id`);
     return rows.map((r) => ({ sourceId: r.source_id, facts: Number(r.facts), versions: r.versions }));
   });
+}
+
+export type PhraseNote = { id: string; name: string; facts: number };
+
+/**
+ * Notes whose name is a description ("keep one-step COD form"), created before descriptions were stored
+ * as values. Only notes that are never a fact's subject qualify, so no fact is lost.
+ */
+export async function findPhraseNotes(workspaceId: string): Promise<PhraseNote[]> {
+  return withWorkspace(workspaceId, async (tx) => {
+    const rows = await tx.execute<{ id: string; name: string; facts: number }>(sql`
+      select e.id, e.name, (select count(*)::int from facts f where f.object_id = e.id) as facts
+      from entities e
+      where e.workspace_id = ${workspaceId}
+        and not exists (select 1 from facts f where f.subject_id = e.id)`);
+    return rows.filter((r) => !looksLikeName(r.name)).map((r) => ({ id: r.id, name: r.name, facts: Number(r.facts) }));
+  });
+}
+
+/** Turns each phrase note back into a plain value on the facts that pointed at it, then removes the note. */
+export async function fixPhraseNotes(workspaceId: string): Promise<PhraseNote[]> {
+  const notes = await findPhraseNotes(workspaceId);
+  if (notes.length === 0) return notes;
+  await withWorkspace(workspaceId, async (tx) => {
+    for (const n of notes) {
+      await tx.execute(sql`update facts set object_value = ${n.name}, object_id = null where object_id = ${n.id}`);
+      await tx.execute(sql`delete from entities where id = ${n.id}
+        and not exists (select 1 from facts f where f.subject_id = ${n.id})`);
+    }
+  });
+  for (const n of notes) publish(workspaceId, { type: "changed", target: "entity", id: n.id, action: "deleted" });
+  return notes;
 }

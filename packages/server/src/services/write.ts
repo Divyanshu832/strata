@@ -6,7 +6,7 @@ import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { withWorkspace, type Tx, uuids } from "../db/client.js";
 import { chunks, facts, sources, type NewFact, type Source } from "../db/schema.js";
 import { config } from "../config.js";
-import { canonicalName, resolveEntity } from "./entities.js";
+import { canonicalName, looksLikeName, resolveEntity } from "./entities.js";
 import { normaliseValue, reconcile } from "./reconcile.js";
 import { embed } from "./embed.js";
 import { extract, EXTRACTOR_VERSION } from "./extract.js";
@@ -92,7 +92,10 @@ export async function applyFacts(
 
     for (const [i, f] of payload.facts.entries()) {
       const subjectId = await idFor(f.subject, canonicalName(f.subject) === "user" ? "person" : undefined);
-      const objectId = f.objectType === "entity" ? await idFor(f.object) : null;
+      // A description sent as an entity ("keep one-step COD form") is stored as a value, unless the agent
+      // also listed it under entities.
+      const named = ids.has(canonicalName(f.object).toLowerCase()) || looksLikeName(f.object);
+      const objectId = f.objectType === "entity" && named ? await idFor(f.object) : null;
       const validFrom = f.validFrom ? new Date(f.validFrom) : source.occurredAt;
       const decision = await reconcileOne(tx, workspaceId, subjectId, f, objectId, validFrom);
 

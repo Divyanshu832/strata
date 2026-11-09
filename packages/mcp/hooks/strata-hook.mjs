@@ -35,13 +35,13 @@ const RULES = `How to use Strata (the user's long-term memory and handbook, shar
   any of those, use what was recalled, and call \`recall\` for more before acting.
 - Save with \`remember\` as soon as something lasting comes up: every decision (big or small, with the reason),
   facts about people, companies, projects and tools, the user's preferences and rules, and their corrections.
-- Full proper names; subject "user" for the user; entity objects over long sentences; validFrom only when known.
+- Full proper names; subject "user" for the user; named things as entity objects, descriptions as values; validFrom only when known.
 - Never save secrets or other people's sensitive data. Checkpoints will also ask you to save.`;
 
 const CHECKPOINT = `Strata checkpoint: before you stop, save to Strata (the user's long-term memory) everything lasting from the conversation since the last checkpoint. Call \`remember\` once, batching all facts:
 - Every decision, big or small (what was chosen, and why if it was said), as kind "event" with predicate "decided".
 - Facts about people, companies, projects, tools and how they relate; preferences and working rules the user stated; corrections the user made to you; what was built, changed or shipped.
-- Full proper names ("Acme Corp", not "the company"); subject "user" for the user. Prefer entity objects ("user · reports_to · Dana Lee") over long sentences. Pass validFrom only when you know it.
+- Full proper names ("Acme Corp", not "the company"); subject "user" for the user. Named people, companies, projects and tools go as entity objects ("user · reports_to · Dana Lee"); descriptions, decisions and preferences go as objectType "value". Pass validFrom only when you know it.
 - Skip secrets, small talk and anything only true for this one task.
 If there is truly nothing new, don't call it. Then end with one short line saying what you saved.`;
 
@@ -100,6 +100,9 @@ async function start() {
 }
 
 async function prompt() {
+  // Harness-generated turns (background-task notices, subagent hand-backs) are not the user speaking:
+  // don't count them toward a checkpoint, recall on them, or let them replace the user's pending message.
+  if (/^\s*<(task-notification|agent-message)[\s>]/.test(String(input.prompt ?? ""))) return;
   const st = state();
   st.prompts = (st.prompts ?? 0) + 1;
   st.pending = String(input.prompt ?? "").slice(0, 20_000);
