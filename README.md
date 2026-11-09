@@ -22,8 +22,10 @@ facts; Strata keeps them current over time, links them into notes like an Obsidi
 
 **Works with**
 
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-MCP-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](#-claude-code-and-any-mcp-client)
-[![Cursor](https://img.shields.io/badge/Cursor-MCP-111111?style=for-the-badge&logo=cursor&logoColor=white)](#-claude-code-and-any-mcp-client)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-hooks%20%2B%20MCP-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](#-connect-your-coding-agent)
+[![Codex](https://img.shields.io/badge/Codex-hooks%20%2B%20MCP-412991?style=for-the-badge&logo=openai&logoColor=white)](#-connect-your-coding-agent)
+[![Gemini CLI](https://img.shields.io/badge/Gemini%20CLI-hooks%20%2B%20MCP-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](#-connect-your-coding-agent)
+[![Cursor](https://img.shields.io/badge/Cursor-hooks%20%2B%20MCP-111111?style=for-the-badge&logo=cursor&logoColor=white)](#-connect-your-coding-agent)
 [![REST](https://img.shields.io/badge/Your%20own%20code-REST%20%2F%20TS%20SDK-3987e5?style=for-the-badge)](#-your-own-code)
 [![Obsidian](https://img.shields.io/badge/Obsidian-export-7C3AED?style=for-the-badge&logo=obsidian&logoColor=white)](#-what-you-get)
 
@@ -37,8 +39,7 @@ facts; Strata keeps them current over time, links them into notes like an Obsidi
 [How it works](#-how-it-works) ·
 [Screens](#-what-you-get) ·
 [Quick start](#-quick-start) ·
-[Connect an agent](#-connect-an-agent) ·
-[Hooks](#-never-miss-a-memory-claude-code-hooks) ·
+[Connect your agent](#-connect-your-coding-agent) ·
 [Configuration](#-configuration) ·
 [Architecture](#-architecture)
 
@@ -200,37 +201,88 @@ pnpm dev
 pnpm dev:web
 ```
 
-Open **http://localhost:3000**. It fills up as soon as an agent starts remembering.
+**4. Connect your coding agents** (Claude Code, Codex, Gemini CLI, Cursor)
+
+```bash
+pnpm connect
+```
+
+Open **http://localhost:3000**. It fills up as soon as your agents start remembering.
 
 > [!TIP]
 > The embedding model (~35 MB) downloads once on first use to `~/.cache/strata/models`. After that,
 > Strata works fully offline.
 
-## 🔌 Connect an agent
+## 🔌 Connect your coding agent
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### <img src="https://cdn.simpleicons.org/anthropic/D97757" width="18" /> Claude Code and any MCP client
+One command connects every coding agent on your machine. No prompts to paste, nothing to remember:
 
 ```bash
-claude mcp add strata -- pnpm --dir "$(pwd)/packages/mcp" start
+pnpm connect                 # every agent it finds
+pnpm connect claude codex    # or pick: claude · codex · gemini · cursor
 ```
 
-| Tool | What it does |
+For each agent it sets up three things, and keeps everything else in your config as it was:
+
+1. **The MCP tools** (`remember`, `recall`, `find_note`, `open_note`, `timeline`, `neighbours`, `forget`).
+2. **Lifecycle hooks**, so memory works even when the model forgets to use it.
+3. **A memory rule** in the agent's global instructions file.
+
+| | <img src="https://cdn.simpleicons.org/anthropic/D97757" width="14" /> Claude Code | <img src="https://cdn.simpleicons.org/openai/412991" width="14" /> Codex | <img src="https://cdn.simpleicons.org/googlegemini/8E75B2" width="14" /> Gemini CLI | <img src="https://cdn.simpleicons.org/cursor/111111" width="14" /> Cursor |
+|---|:---:|:---:|:---:|:---:|
+| 🧰 MCP tools | ✅ | ✅ | ✅ | ✅ |
+| 🧭 Memory brief when a session starts | ✅ | ✅ | ✅ | ✅ |
+| 🔎 Recall on every message | ✅ | ✅ | ✅ | — ¹ |
+| 💾 Conversation saved, searchable | ✅ | ✅ | ✅ | ✅ |
+| ✍️ Save checkpoint every 6 messages and after compaction | ✅ | ✅ | ✅ | ✅ |
+| 📜 Memory rule | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/GEMINI.md` | in the brief ² |
+
+<sub>¹ Cursor has no hook that can add context to a message. ² Cursor keeps user rules in its settings
+screen, so the session-start brief carries the rule instead.</sub>
+
+**What the hooks do**
+
+| Moment | What happens |
 |---|---|
-| `remember` | Save facts (and the original text) |
-| `recall` | Get context for a question, within a token budget |
-| `find_note` / `open_note` | Look up a person, project or place |
-| `timeline` | Everything that happened to one note, in order |
-| `neighbours` | What a note is linked to |
-| `forget` | Delete a fact (logged) |
+| Session starts | Injects a **memory brief**: how to use Strata, who you are, this project, the latest memories. Starts the local API if it isn't running |
+| You send a message | **Recalls** what Strata knows about it and adds it to the context |
+| The agent stops | Saves the new part of the conversation as **searchable text** (keys and tokens redacted, tool output skipped) |
+| Every 6 messages | **Checkpoint**: the agent has to save every decision and lasting fact with `remember` before it stops |
+| Before compaction, at the end | Saves what's left, then runs a checkpoint |
 
-</td>
-<td width="50%" valign="top">
+> [!IMPORTANT]
+> **Codex:** run `/hooks` once inside Codex to review and trust the Strata hooks; Codex skips untrusted
+> hooks. **Gemini CLI:** if the hooks show as disabled, run `/hooks enable-all`. Restart any agent that
+> was open while you connected.
 
-### 🧩 Your own code
+Every file is backed up once (`*.strata-backup`) before its first change, and re-running is safe.
+`pnpm connect --remove` undoes it; `pnpm connect --dry-run` shows what would change.
+
+<details>
+<summary><b>Tune it</b></summary>
+
+The hooks read `STRATA_URL` and `STRATA_API_KEY` from the environment or the repo's `.env`.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `STRATA_CHECKPOINT_EVERY` | `6` | Messages between save checkpoints |
+| `STRATA_HOOK_RECALL` | on | `0` turns off recall on every message |
+| `STRATA_AUTOSTART` | on | `0` never starts the local API from a hook |
+
+The hook is one plain-JavaScript file (`packages/mcp/hooks/strata-hook.mjs`), so it starts in about 60 ms
+and never needs a build. If Strata is unreachable it steps aside and the session carries on.
+
+</details>
+
+### 🧩 Any other MCP client
+
+Point it at the MCP server (stdio):
+
+```bash
+node packages/mcp/node_modules/tsx/dist/cli.mjs --env-file-if-exists=.env packages/mcp/src/index.ts
+```
+
+### 🛠️ Your own code
 
 ```ts
 import { Strata } from "@stratamem/sdk";
@@ -246,77 +298,10 @@ await strata.remember({
   }],
 });
 
-const memory = await strata.recall({
-  query: "Where do I live?", maxTokens: 1000, explain: true,
-});
+const memory = await strata.recall({ query: "Where do I live?", maxTokens: 1000, explain: true });
 ```
 
 Or call the REST API directly: `POST /v1/memories`, `POST /v1/recall`.
-
-</td>
-</tr>
-</table>
-
-### 📌 Make your agent use it every session
-
-An MCP server's instructions are a hint, not a rule: in a long session an agent can forget to save.
-Paste this once into each agent you use, so it writes the rule into its own global instructions
-(for Claude Code, `~/.claude/CLAUDE.md`):
-
-<details>
-<summary><b>Show the setup prompt</b></summary>
-
-```text
-Add this to your global instructions, the file you read at the start of every session in every project
-(create it if needed). Then show me the result.
-
-# Memory (Strata)
-Use the Strata MCP tools as long-term memory, shared across sessions and agents.
-- At the start of a task that involves people, companies, projects or past decisions, `recall` first.
-- Save lasting information with `remember`: decisions, facts about people/companies/projects, preferences,
-  events. Skip small talk, one-off details and anything only true for this task.
-- Save at natural checkpoints, not every reply: when a decision is made, when the user states something
-  lasting about themselves or their work, and when a task wraps up. Batch several facts into one call.
-- Always use full proper names ("Acme Corp", not "the company" or "my job"), so facts land on the right
-  note. Use subject "user" for the person you are helping.
-- Never save secrets (passwords, API keys, tokens) or other people's sensitive data.
-```
-
-</details>
-
-### 🪝 Never miss a memory: Claude Code hooks
-
-Instructions are a request; hooks are a guarantee. `packages/mcp/hooks/claude-code.mjs` plugs into Claude
-Code's lifecycle so memory works even when the model forgets:
-
-| Hook | What it does |
-|---|---|
-| `SessionStart` | Injects a **memory brief**: who you are, this project, the latest memories |
-| `UserPromptSubmit` | **Recalls** what Strata knows about your message and adds it to the context |
-| `Stop` | Saves the new part of the conversation as **searchable raw text** (secrets redacted, tool output skipped). Every 6 prompts it runs a **checkpoint**: the agent must save decisions and facts with `remember` before it stops |
-| `PreCompact` | Saves everything before the context is compacted, then asks for a checkpoint |
-| `SessionEnd` | Saves whatever is left |
-
-<details>
-<summary><b>Add them to <code>~/.claude/settings.json</code></b></summary>
-
-```json
-{
-  "hooks": {
-    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs session-start" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs prompt" }] }],
-    "Stop":             [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs stop" }] }],
-    "PreCompact":       [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs pre-compact" }] }],
-    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "node /path/to/strata/packages/mcp/hooks/claude-code.mjs session-end" }] }]
-  }
-}
-```
-
-It reads `STRATA_URL` and `STRATA_API_KEY` from the environment or the repo's `.env`. Set
-`STRATA_CHECKPOINT_EVERY` to change how often checkpoints run, or `STRATA_HOOK_RECALL=0` to turn off
-per-message recall. Plain JavaScript, no build: it starts in about 60 ms.
-
-</details>
 
 > [!NOTE]
 > Raw text with no agent behind it (imports, webhooks) is stored and searchable as-is. Set
@@ -384,7 +369,8 @@ pnpm test        # 39 unit tests, plus end-to-end API tests when the database is
 - **Nothing is silently lost.** Replaced facts are closed, not deleted. Only `forget` deletes, and every
   delete is written to an audit log with what was removed.
 - **Separate workspaces**, one API key each, enforced in the database.
-- **No secrets in memory.** The agent setup prompt tells agents never to save passwords, keys or tokens.
+- **No secrets in memory.** The hooks redact keys and tokens before saving a conversation, skip tool
+  output, and the memory rule tells agents never to save passwords, keys or tokens.
 
 ## 🗺️ Roadmap
 

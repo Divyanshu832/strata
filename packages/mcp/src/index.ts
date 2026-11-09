@@ -1,5 +1,5 @@
 // Strata MCP server (stdio). Lets Claude Code and other MCP clients use Strata as their memory.
-// Register in Claude Code:  claude mcp add strata -- pnpm --dir <repo>/packages/mcp start
+// Connect Claude Code, Codex, Gemini CLI and Cursor (tools + hooks + memory rule):  pnpm connect
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";

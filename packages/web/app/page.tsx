@@ -8,8 +8,8 @@ import { ago, displayName, num, statementText } from "@/lib/format";
 export default async function Overview() {
   const [stats, graph, status] = await Promise.all([strata.stats(), strata.graph(), strata.status()]);
   // Shown as $HOME/… : the shell expands it when you run the command, and the page doesn't print your user name.
-  const abs = path.resolve(process.cwd(), "..", "mcp");
-  const mcpDir = abs.startsWith(homedir()) ? `"$HOME${abs.slice(homedir().length)}"` : abs;
+  const abs = path.resolve(process.cwd(), "..", "..");
+  const repoDir = abs.startsWith(homedir()) ? `"$HOME${abs.slice(homedir().length)}"` : abs;
   const empty = stats.currentFacts === 0 && stats.sources === 0;
 
   return (
@@ -71,9 +71,9 @@ export default async function Overview() {
 
         <section>
           <h2 className="mb-3 border-b border-line pb-2 text-[15px] font-semibold">Connect an agent</h2>
-          <p className="text-[13.5px] text-muted">Claude Code (or any MCP client) uses Strata as its memory. It extracts the facts itself, so Strata needs no model of its own.</p>
+          <p className="text-[13.5px] text-muted">One command connects Claude Code, Codex, Gemini CLI and Cursor: the memory tools, plus hooks that recall on every message and save every decision. Your agent extracts the facts, so Strata needs no model of its own.</p>
           <pre className="mt-3 overflow-x-auto rounded-lg bg-panel px-4 py-3 text-[12.5px] leading-relaxed text-soft">
-            claude mcp add strata -- pnpm --dir {mcpDir} start
+            pnpm --dir {repoDir} connect
           </pre>
           <p className="mt-3 text-[13.5px] text-muted">From your own code:</p>
           <pre className="mt-2 overflow-x-auto rounded-lg bg-panel px-4 py-3 text-[12.5px] leading-relaxed text-soft">{`await strata.remember({ facts: [

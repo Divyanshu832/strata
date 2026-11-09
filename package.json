@@ -13,6 +13,7 @@
     "migrate": "pnpm --filter @stratamem/server migrate",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "connect": "node packages/mcp/hooks/connect.mjs"
   }
 }
