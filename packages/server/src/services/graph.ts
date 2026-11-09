@@ -1,7 +1,7 @@
 // Database side of notes and graph: load notes, neighbours (server-side link following), full graph.
 import { sql } from "drizzle-orm";
 import { at, uuids, type Tx } from "../db/client.js";
-import type { Backlink, Graph, GraphEdge, GraphNode, NoteFact, NoteInput } from "./notes.js";
+import type { Backlink, Graph, GraphDetail, GraphEdge, GraphNode, NoteFact, NoteInput } from "./notes.js";
 
 type EdgeRow = {
   id: string;
@@ -38,7 +38,65 @@ export async function fullGraph(tx: Tx, workspaceId: string): Promise<Graph> {
   const edges = await tx.execute<EdgeRow>(sql`
     select id, subject_id, object_id, predicate, valid_from, valid_to, status
     from facts where workspace_id = ${workspaceId} and object_id is not null`);
-  return { nodes: await loadNodes(tx, workspaceId), edges: edges.map(toEdge) };
+  return {
+    nodes: await loadNodes(tx, workspaceId),
+    edges: [...edges.map(toEdge), ...(await mentionEdges(tx, workspaceId))],
+    details: await detailFacts(tx, workspaceId),
+  };
+}
+
+/** Each note's plain-value facts (newest 40 per note), for the zoomed-in view of the graph. */
+async function detailFacts(tx: Tx, workspaceId: string): Promise<GraphDetail[]> {
+  const rows = await tx.execute<{
+    id: string; subject_id: string; predicate: string; object_value: string | null; statement: string;
+    valid_from: string; valid_to: string | null; status: GraphDetail["status"];
+  }>(sql`
+    select id, subject_id, predicate, object_value, statement, valid_from, valid_to, status from (
+      select f.*, row_number() over (partition by f.subject_id order by f.valid_to is not null, f.valid_from desc) as n
+      from facts f where f.workspace_id = ${workspaceId} and f.object_id is null and f.status <> 'merged'
+    ) x where n <= 40`);
+  const short = (s: string) => (s.length > 64 ? `${s.slice(0, 61).trimEnd()}…` : s);
+  return rows.map((r) => ({
+    id: r.id,
+    entityId: r.subject_id,
+    predicate: r.predicate,
+    label: short(r.object_value ?? r.statement),
+    statement: r.statement,
+    validFrom: new Date(r.valid_from),
+    validTo: r.valid_to ? new Date(r.valid_to) : null,
+    status: r.status,
+  }));
+}
+
+/**
+ * Like Obsidian's mentions: a fact about one note whose text names another note links the two, so notes
+ * connected only through descriptions ("Andrea Rimmaudo and Valerio Manueddu want …") still join the graph.
+ * One link per pair, from the earliest fact that mentions it; skipped where a direct link already exists.
+ */
+async function mentionEdges(tx: Tx, workspaceId: string): Promise<GraphEdge[]> {
+  const notes = await tx.execute<{ id: string; name: string; aliases: string[] }>(sql`
+    select id, name, aliases from entities where workspace_id = ${workspaceId} and name <> 'user'`);
+  const facts = await tx.execute<EdgeRow & { object_id: string | null; text: string }>(sql`
+    select id, subject_id, object_id, predicate, valid_from, valid_to, status,
+      statement || ' ' || coalesce(object_value, '') as text
+    from facts where workspace_id = ${workspaceId} and status <> 'merged'
+    order by valid_to is not null, valid_from`);
+  const escape = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = notes.map((n) => ({
+    id: n.id,
+    re: new RegExp(`(^|[^\\p{L}\\p{N}])(${[n.name, ...n.aliases].filter((x) => x.length >= 3).map(escape).join("|")})($|[^\\p{L}\\p{N}])`, "iu"),
+  })).filter((p) => !p.re.source.includes("()"));
+  const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const seen = new Set(facts.filter((f) => f.object_id).map((f) => pair(f.subject_id, f.object_id!)));
+  const edges: GraphEdge[] = [];
+  for (const f of facts) {
+    for (const p of patterns) {
+      if (p.id === f.subject_id || p.id === f.object_id || seen.has(pair(f.subject_id, p.id)) || !p.re.test(f.text)) continue;
+      seen.add(pair(f.subject_id, p.id));
+      edges.push(toEdge({ ...f, id: `${f.id}:${p.id}`, object_id: p.id, predicate: "mentions" }));
+    }
+  }
+  return edges;
 }
 
 /**

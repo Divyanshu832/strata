@@ -85,7 +85,18 @@ export type GraphEdge = {
   validTo: Date | null;
   status: NoteFact["status"];
 };
-export type Graph = { nodes: GraphNode[]; edges: GraphEdge[] };
+/** A fact with a plain value, shown as a small dot around its note when the graph is zoomed in. */
+export type GraphDetail = {
+  id: string; // fact id
+  entityId: string;
+  predicate: string;
+  label: string;
+  statement: string;
+  validFrom: Date;
+  validTo: Date | null;
+  status: NoteFact["status"];
+};
+export type Graph = { nodes: GraphNode[]; edges: GraphEdge[]; details?: GraphDetail[] };
 
 /**
  * The connected chain an agent gets back from recall, as compact text:
@@ -121,7 +132,9 @@ export function formatChain(graph: Graph, startIds: string[], at?: Date): string
 export function graphAt(graph: Graph, at: Date): Graph {
   const edges = graph.edges.filter((e) => e.validFrom <= at && (e.validTo === null || e.validTo > at));
   const used = new Set(edges.flatMap((e) => [e.source, e.target]));
-  return { nodes: graph.nodes.filter((n) => used.has(n.id)), edges };
+  const nodes = graph.nodes.filter((n) => used.has(n.id));
+  const details = graph.details?.filter((d) => used.has(d.entityId) && d.validFrom <= at && (d.validTo === null || d.validTo > at));
+  return { nodes, edges, ...(details && { details }) };
 }
 
 /** Safe file name for the Obsidian export. */

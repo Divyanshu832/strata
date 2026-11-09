@@ -33,7 +33,8 @@ export function GraphExplorer({ initial, initialAt }: { initial: Graph; initialA
     );
     const conflicts = live.filter((e) => e.status === "contradiction").length;
     const nodes = new Set(live.flatMap((e) => [e.source, e.target])).size;
-    return { links: live.length, nodes, conflicts };
+    const mentions = live.filter((e) => e.predicate === "mentions").length;
+    return { links: live.length - mentions, mentions, nodes, conflicts };
   }, [graph, when, isNow]);
 
   const types = [...new Set(graph.nodes.map((n) => n.type))];
@@ -43,7 +44,7 @@ export function GraphExplorer({ initial, initialAt }: { initial: Graph; initialA
       <div className="mx-auto max-w-md px-6 py-24 text-center">
         <h1 className="text-lg font-semibold">The graph is empty</h1>
         <p className="mt-2 text-muted">
-          Every person, project and place your agents remember becomes a node here, linked by the facts between them.
+          Every person, project and place your agents remember becomes a node here, linked by the facts between them. Dotted lines are mentions: a fact about one note that names another.
           Connect an agent from the Overview page to start.
         </p>
       </div>
@@ -63,7 +64,7 @@ export function GraphExplorer({ initial, initialAt }: { initial: Graph; initialA
         <div className="pointer-events-none absolute top-4 left-5">
           <p className="text-[22px] font-semibold tracking-tight">{isNow ? "Now" : day(when)}</p>
           <p className="text-[13px] text-muted">
-            {counts.nodes} notes linked by {counts.links} facts
+            {counts.nodes} notes linked by {counts.links} facts{counts.mentions > 0 && ` and ${counts.mentions} mentions`}
             {counts.conflicts > 0 && <span className="text-cinnabar"> · {counts.conflicts} conflicting</span>}
           </p>
         </div>

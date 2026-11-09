@@ -112,7 +112,18 @@ export type GraphEdge = {
   validTo: string | null;
   status: FactStatus;
 };
-export type Graph = { nodes: GraphNode[]; edges: GraphEdge[] };
+/** A fact with a plain value, shown as a small dot around its note when the graph is zoomed in. */
+export type GraphDetail = {
+  id: string;
+  entityId: string;
+  predicate: string;
+  label: string;
+  statement: string;
+  validFrom: string;
+  validTo: string | null;
+  status: FactStatus;
+};
+export type Graph = { nodes: GraphNode[]; edges: GraphEdge[]; details?: GraphDetail[] };
 
 export type NoteFact = {
   id: string;
