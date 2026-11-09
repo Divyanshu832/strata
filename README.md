@@ -195,7 +195,7 @@ pnpm --filter @stratamem/server create-key "me"
 pnpm dev
 ```
 
-**3. Web app** (Next.js on port 3000)
+**3. Web app** (Next.js on port 4243)
 
 ```bash
 pnpm dev:web
@@ -207,7 +207,7 @@ pnpm dev:web
 pnpm connect
 ```
 
-Open **http://localhost:3000**. It fills up as soon as your agents start remembering.
+Open **http://localhost:4243**. It fills up as soon as your agents start remembering.
 
 > [!TIP]
 > The embedding model (~35 MB) downloads once on first use to `~/.cache/strata/models`. After that,
